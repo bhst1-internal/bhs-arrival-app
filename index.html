@@ -469,8 +469,8 @@
         function loadExternalData() {
             loader.classList.remove('hidden');
             
-            // Fetch the external Excel file dynamically
-            fetch('data.xlsx')
+            // Fetch the external Excel file dynamically with cache-busting
+            fetch('data.xlsx?v=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error("File not found");
                     return response.arrayBuffer(); // Convert file to binary buffer
