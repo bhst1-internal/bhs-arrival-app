@@ -266,22 +266,23 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-gray-700 text-sm">1. Operational Timeline</h3>
                     <div class="flex items-center space-x-3">
+                        
+                        <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            JPEG
+                        </button>
+                        
+                        <button id="dataTableBtn" onclick="toggleDataTable()" title="Toggle Expanded View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
+                            Data Table
+                        </button>
+
                         <button id="overlayBtn" onclick="toggleOverlay()" title="Overlay Dates" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                             Overlay
-                        </button>
-
-                        <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            Save JPEG
-                        </button>
-                        
-                        <button id="dataTableBtn" onclick="toggleDataTable()" title="Toggle Expanded View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
-                            Data Table
                         </button>
 
                         <div id="intervalContainer" class="flex items-center space-x-2 border-l border-gray-200 pl-3">
@@ -490,6 +491,7 @@
 
     </div>
 
+    <!-- CLEAN JAVASCRIPT PAYLOAD -->
     <script>
         let pristineHTML = "";
         let globalData = [];
@@ -497,169 +499,12 @@
         let simCounter = 1; 
         const loader = document.getElementById('loading-overlay');
         let activeFlightUid = null;
-
-        const palette = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
-
-        // --- TIMELINE DATA TABLE & CONTROLS LOGIC ---
         let isTimelineTableExpanded = false;
         window.isTimelineOverlayActive = false;
 
-        function toggleOverlay() {
-            window.isTimelineOverlayActive = !window.isTimelineOverlayActive;
-            const btn = document.getElementById('overlayBtn');
-            const slicer = document.getElementById('slicer-interval');
-            
-            if (window.isTimelineOverlayActive) {
-                btn.style.background = '#e0e7ff';
-                btn.style.borderColor = '#6366f1';
-                btn.style.color = '#4338ca';
-                // Force to hourly if daily was selected since overlaying days needs an intraday scale
-                if(slicer.value === 'daily') slicer.value = 'hourly';
-            } else {
-                btn.style.background = '#ffffff';
-                btn.style.borderColor = '#d1d5db';
-                btn.style.color = '#4b5563';
-            }
-            updateDashboardWithLoader();
-        }
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+        const paletteOverlay = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
 
-        function toggleDataTable() {
-            const section = document.getElementById('timelineSection');
-            const modalBody = document.getElementById('timeline-modal-body');
-            const overlay = document.getElementById('timeline-expanded-modal');
-            const btn = document.getElementById('dataTableBtn');
-            const tableContainer = document.getElementById('timelineTableContainer');
-            const chartDiv = document.getElementById('chart-timeline');
-
-            if (!isTimelineTableExpanded) {
-                // Expand: Move to Modal
-                let placeholder = document.getElementById('timeline-placeholder');
-                if (!placeholder) {
-                    placeholder = document.createElement('div');
-                    placeholder.id = 'timeline-placeholder';
-                    placeholder.className = "w-full transition-all";
-                }
-                placeholder.style.height = section.offsetHeight + 'px';
-                placeholder.style.display = 'block';
-                section.parentNode.insertBefore(placeholder, section);
-                
-                modalBody.appendChild(section);
-                
-                // Adjust styles for modal view
-                section.classList.remove('rounded-lg', 'shadow', 'border-t-4');
-                section.classList.add('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
-                
-                // Make chart slightly taller in expanded view
-                chartDiv.classList.remove('h-[400px]');
-                chartDiv.classList.add('h-[450px]');
-
-                tableContainer.style.display = 'block'; // Show table
-                overlay.classList.remove('hidden');     // Show Modal
-                
-                // Update Button to Red Close State
-                btn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                    Minimize View`;
-                btn.style.background = '#fee2e2';
-                btn.style.borderColor = '#ef4444';
-                btn.style.color = '#b91c1c';
-
-                // Resize chart to new width/height
-                setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
-            } else {
-                // Collapse: Move back to Dashboard
-                const placeholder = document.getElementById('timeline-placeholder');
-                if (placeholder && placeholder.parentNode) {
-                    placeholder.parentNode.insertBefore(section, placeholder);
-                    placeholder.style.display = 'none';
-                }
-                
-                // Revert styles
-                section.classList.add('rounded-lg', 'shadow', 'border-t-4');
-                section.classList.remove('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
-                
-                chartDiv.classList.add('h-[400px]');
-                chartDiv.classList.remove('h-[450px]');
-
-                overlay.classList.add('hidden');
-                tableContainer.style.display = 'none'; // Hide table
-                
-                // Revert Button to Neutral Gray State
-                btn.innerHTML = `Data Table`;
-                btn.style.background = '#ffffff';
-                btn.style.borderColor = '#d1d5db';
-                btn.style.color = '#4b5563';
-
-                // Resize chart back to normal dashboard limits
-                setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
-            }
-            isTimelineTableExpanded = !isTimelineTableExpanded;
-        }
-
-        function saveTimelineAsJPEG() {
-            const section = document.getElementById('timelineSection');
-            const btnGroup = section.querySelector('.flex.items-center.space-x-3');
-            const tableScrollDiv = section.querySelector('.overflow-x-auto.sim-scroll');
-            
-            const modalBody = document.getElementById('timeline-modal-body');
-            const modalWrapper = document.getElementById('timeline-expanded-modal').firstElementChild;
-
-            // Temporarily hide buttons from screenshot
-            const btnOrigDisplay = btnGroup.style.display;
-            btnGroup.style.display = 'none';
-
-            // Save original styles before overriding for full capture
-            const origSectionWidth = section.style.width;
-            const origTableOverflow = tableScrollDiv ? tableScrollDiv.style.overflowX : '';
-            const origModalBodyOverflow = modalBody ? modalBody.style.overflow : '';
-            const origModalWrapperOverflow = modalWrapper ? modalWrapper.style.overflow : '';
-
-            // Expand everything so html2canvas sees it without clipping
-            if (isTimelineTableExpanded) {
-                if (tableScrollDiv) tableScrollDiv.style.overflowX = 'visible';
-                if (modalBody) modalBody.style.overflow = 'visible';
-                if (modalWrapper) modalWrapper.style.overflow = 'visible';
-                
-                const fullWidth = tableScrollDiv ? Math.max(section.offsetWidth, tableScrollDiv.scrollWidth) : section.offsetWidth;
-                section.style.width = fullWidth + 'px';
-            }
-
-            html2canvas(section, {
-                scale: 2, 
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            }).then(canvas => {
-                // Restore UI immediately
-                btnGroup.style.display = btnOrigDisplay;
-                if (isTimelineTableExpanded) {
-                    if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
-                    if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
-                    if (modalWrapper) modalWrapper.style.overflow = origModalWrapperOverflow;
-                    section.style.width = origSectionWidth;
-                }
-
-                // Download image
-                const link = document.createElement('a');
-                link.download = `Operational_Timeline_Export_${new Date().getTime()}.jpeg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.9);
-                link.click();
-            }).catch(err => {
-                console.error('Error generating image:', err);
-                
-                // Fallback restore
-                btnGroup.style.display = btnOrigDisplay;
-                if (isTimelineTableExpanded) {
-                    if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
-                    if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
-                    if (modalWrapper) modalWrapper.style.overflow = origModalWrapperOverflow;
-                    section.style.width = origSectionWidth;
-                }
-                alert('Failed to generate image. Please check console for details.');
-            });
-        }
-        // --- END TIMELINE LOGIC ---
-
-        // --- AUTOMATED EXCEL FETCH LOGIC ---
         document.addEventListener('DOMContentLoaded', () => {
             pristineHTML = document.documentElement.outerHTML;
             loadExternalData();
@@ -667,15 +512,12 @@
 
         function loadExternalData() {
             loader.classList.remove('hidden');
-            
-            // Fetch the external Excel file dynamically with cache-busting
             fetch('data.xlsx?v=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error("File not found");
-                    return response.arrayBuffer(); // Convert file to binary buffer
+                    return response.arrayBuffer(); 
                 })
                 .then(buffer => {
-                    // Feed the buffer directly into your existing SheetJS logic
                     processExcelData(buffer);
                 })
                 .catch(error => {
@@ -696,7 +538,6 @@
             return window.btoa(binary);
         }
 
-        // Global color mapping helper functions
         const getReclaimColor = (rc) => {
             if (!rc || rc === 'N/A' || rc === 'Unknown') return '#9ca3af';
             const allReclaims = [...new Set(globalData.map(d => d.OriginalReclaim))].filter(a => a && a.toUpperCase() !== 'UNKNOWN').sort();
@@ -778,24 +619,14 @@
 
         const formatCustomDate = (d) => {
             if (!d || typeof d.getTime !== 'function' || isNaN(d.getTime())) return '-'; 
-            
-            // Fix for Excel precision resulting in 1-minute less display.
-            // Clones the date, then rounds to nearest minute.
             let disp = new Date(d.getTime());
-            if (disp.getSeconds() >= 30) {
-                disp.setMinutes(disp.getMinutes() + 1);
-            }
-            disp.setSeconds(0);
-            disp.setMilliseconds(0);
-
+            if (disp.getSeconds() >= 30) { disp.setMinutes(disp.getMinutes() + 1); }
+            disp.setSeconds(0); disp.setMilliseconds(0);
             const pad = (n) => String(n).padStart(2, '0');
             return `${pad(disp.getDate())}/${pad(disp.getMonth() + 1)}/${disp.getFullYear()}&nbsp;&nbsp;${pad(disp.getHours())}:${pad(disp.getMinutes())}`;
         };
 
-        const formatTableDate = (d) => {
-            let formatted = formatCustomDate(d);
-            return formatted.replace(' &nbsp;', '<br>');
-        };
+        const formatTableDate = (d) => { return formatCustomDate(d).replace(' &nbsp;', '<br>'); };
 
         function getNextSimId() {
             const items = document.querySelectorAll('.sim-list-item');
@@ -803,8 +634,7 @@
             let ids = Array.from(items).map(item => parseInt(item.dataset.simId)).sort((a,b) => a-b);
             let nextId = 1;
             for (let i = 0; i < ids.length; i++) {
-                if (ids[i] === nextId) nextId++;
-                else if (ids[i] > nextId) break;
+                if (ids[i] === nextId) nextId++; else if (ids[i] > nextId) break;
             }
             return nextId;
         }
@@ -839,7 +669,7 @@
                     reader.onload = (e) => {
                         window.embeddedExcelBase64 = arrayBufferToBase64(e.target.result);
                         processExcelData(e.target.result);
-                        event.target.value = ''; // Reset input so identical file uploads still trigger
+                        event.target.value = ''; 
                     };
                     reader.readAsArrayBuffer(file);
                 }, 50);
@@ -863,6 +693,143 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         });
+
+        function toggleOverlay() {
+            window.isTimelineOverlayActive = !window.isTimelineOverlayActive;
+            const btn = document.getElementById('overlayBtn');
+            const slicer = document.getElementById('slicer-interval');
+            
+            if (window.isTimelineOverlayActive) {
+                btn.style.background = '#e0e7ff';
+                btn.style.borderColor = '#6366f1';
+                btn.style.color = '#4338ca';
+                if(slicer.value === 'daily') slicer.value = 'hourly';
+            } else {
+                btn.style.background = '#ffffff';
+                btn.style.borderColor = '#d1d5db';
+                btn.style.color = '#4b5563';
+            }
+            updateDashboardWithLoader();
+        }
+
+        function toggleDataTable() {
+            const section = document.getElementById('timelineSection');
+            const modalBody = document.getElementById('timeline-modal-body');
+            const overlay = document.getElementById('timeline-expanded-modal');
+            const btn = document.getElementById('dataTableBtn');
+            const tableContainer = document.getElementById('timelineTableContainer');
+            const chartDiv = document.getElementById('chart-timeline');
+
+            if (!isTimelineTableExpanded) {
+                let placeholder = document.getElementById('timeline-placeholder');
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.id = 'timeline-placeholder';
+                    placeholder.className = "w-full transition-all";
+                }
+                placeholder.style.height = section.offsetHeight + 'px';
+                placeholder.style.display = 'block';
+                section.parentNode.insertBefore(placeholder, section);
+                
+                modalBody.appendChild(section);
+                
+                section.classList.remove('rounded-lg', 'shadow', 'border-t-4');
+                section.classList.add('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
+                
+                chartDiv.classList.remove('h-[400px]');
+                chartDiv.classList.add('h-[450px]');
+
+                tableContainer.style.display = 'block'; 
+                overlay.classList.remove('hidden');     
+                
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    Minimize View`;
+                btn.style.background = '#fee2e2';
+                btn.style.borderColor = '#ef4444';
+                btn.style.color = '#b91c1c';
+
+                setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
+            } else {
+                const placeholder = document.getElementById('timeline-placeholder');
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.parentNode.insertBefore(section, placeholder);
+                    placeholder.style.display = 'none';
+                }
+                
+                section.classList.add('rounded-lg', 'shadow', 'border-t-4');
+                section.classList.remove('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
+                
+                chartDiv.classList.add('h-[400px]');
+                chartDiv.classList.remove('h-[450px]');
+
+                overlay.classList.add('hidden');
+                tableContainer.style.display = 'none'; 
+                
+                btn.innerHTML = `Data Table`;
+                btn.style.background = '#ffffff';
+                btn.style.borderColor = '#d1d5db';
+                btn.style.color = '#4b5563';
+
+                setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
+            }
+            isTimelineTableExpanded = !isTimelineTableExpanded;
+        }
+
+        function saveTimelineAsJPEG() {
+            const section = document.getElementById('timelineSection');
+            const btnGroup = section.querySelector('.flex.items-center.space-x-3');
+            const tableScrollDiv = section.querySelector('.overflow-x-auto.sim-scroll');
+            
+            const modalBody = document.getElementById('timeline-modal-body');
+            const modalWrapper = document.getElementById('timeline-expanded-modal').firstElementChild;
+
+            const btnOrigDisplay = btnGroup.style.display;
+            btnGroup.style.display = 'none';
+
+            const origSectionWidth = section.style.width;
+            const origTableOverflow = tableScrollDiv ? tableScrollDiv.style.overflowX : '';
+            const origModalBodyOverflow = modalBody ? modalBody.style.overflow : '';
+            const origModalWrapperOverflow = modalWrapper ? modalWrapper.style.overflow : '';
+
+            if (isTimelineTableExpanded) {
+                if (tableScrollDiv) tableScrollDiv.style.overflowX = 'visible';
+                if (modalBody) modalBody.style.overflow = 'visible';
+                if (modalWrapper) modalWrapper.style.overflow = 'visible';
+                
+                const fullWidth = tableScrollDiv ? Math.max(section.offsetWidth, tableScrollDiv.scrollWidth) : section.offsetWidth;
+                section.style.width = fullWidth + 'px';
+            }
+
+            html2canvas(section, {
+                scale: 2, 
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                btnGroup.style.display = btnOrigDisplay;
+                if (isTimelineTableExpanded) {
+                    if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
+                    if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
+                    if (modalWrapper) modalWrapper.style.overflow = origModalWrapperOverflow;
+                    section.style.width = origSectionWidth;
+                }
+
+                const link = document.createElement('a');
+                link.download = `Operational_Timeline_Export_${new Date().getTime()}.jpeg`;
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+            }).catch(err => {
+                console.error('Error generating image:', err);
+                btnGroup.style.display = btnOrigDisplay;
+                if (isTimelineTableExpanded) {
+                    if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
+                    if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
+                    if (modalWrapper) modalWrapper.style.overflow = origModalWrapperOverflow;
+                    section.style.width = origSectionWidth;
+                }
+                alert('Failed to generate image. Please check console for details.');
+            });
+        }
 
         function processExcelData(buffer) {
             try {
@@ -889,7 +856,6 @@
                 
                 for(let i = 0; i < jsonRaw.length; i++) {
                     const row = jsonRaw[i];
-                    
                     let ataDate = robustDateParse(row[kAta]);
                     if (!ataDate || isNaN(ataDate.getTime())) continue; 
 
@@ -917,10 +883,8 @@
                     }
                     
                     let firstBagDiff = (firstBagParsed && ataDate) ? Math.max(0, (firstBagParsed.getTime() - ataDate.getTime()) / 60000) : 0;
-                    
                     let staRaw = robustDateParse(row[kSta]);
                     let onChockRaw = robustDateParse(row[kOnChock]);
-                    
                     let flightStr = row[kFlight] != null ? String(row[kFlight]).trim() : 'Unknown';
                     let actualReclaim = row[kReclaim] != null ? String(row[kReclaim]).trim() : 'Unknown';
                     
@@ -975,9 +939,8 @@
 
             document.getElementById('slicer-interval').value = 'hourly';
 
-            // Set dates dynamically based on latest date in loaded file data
             if (globalData.length > 0) {
-                const maxAta = globalData[globalData.length - 1].ATA; // The latest date available
+                const maxAta = globalData[globalData.length - 1].ATA; 
                 document.getElementById('filter-start-date').value = formatDateForInput(maxAta);
                 document.getElementById('filter-end-date').value = formatDateForInput(maxAta);
             } else {
@@ -1190,7 +1153,6 @@
                 document.getElementById('custom-reclaim-text').innerText = 'All Reclaims';
                 document.getElementById('slicer-reclaim').value = 'ALL';
                 
-                // Dynamically reset dates to latest date in dataset
                 if (globalData.length > 0) {
                     const maxAta = globalData[globalData.length - 1].ATA;
                     document.getElementById('filter-start-date').value = formatDateForInput(maxAta);
@@ -1204,7 +1166,6 @@
                 updateDashboardWithLoader();
             });
 
-            // TIME ENTRY MASK LISTENER
             const simTimeInput = document.getElementById('sim-input-time');
             if (simTimeInput) {
                 simTimeInput.addEventListener('input', function(e) {
@@ -1216,9 +1177,7 @@
                 });
                 simTimeInput.addEventListener('blur', function(e) {
                     let regex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-                    if(!regex.test(this.value)) {
-                        this.value = "08:00"; 
-                    }
+                    if(!regex.test(this.value)) { this.value = "08:00"; }
                 });
             }
 
@@ -1286,7 +1245,6 @@
 
             flightSearch.addEventListener('input', (e) => { filterFlightOptions(e.target.value); });
 
-            // TABLE TOOLTIP EVENT LISTENERS
             const tableTooltip = document.getElementById('table-custom-tooltip');
             const tableTooltipContent = document.getElementById('table-tooltip-content');
             const tbody = document.querySelector('#reclaim-table tbody');
@@ -1342,7 +1300,6 @@
                 if (target) tableTooltip.style.opacity = '0';
             });
 
-            // FLIGHT ACTION (SHIFT / RESET) LOGIC
             tbody.addEventListener('click', (e) => {
                 let target = e.target.closest('.flight-action-trigger');
                 if (!target) return;
@@ -1368,18 +1325,13 @@
                 document.getElementById('flight-action-modal').classList.remove('hidden');
             });
 
-            document.getElementById('btn-close-action-modal').addEventListener('click', () => {
-                document.getElementById('flight-action-modal').classList.add('hidden');
-            });
+            document.getElementById('btn-close-action-modal').addEventListener('click', () => { document.getElementById('flight-action-modal').classList.add('hidden'); });
 
             document.getElementById('btn-confirm-shift').addEventListener('click', () => {
                 if (!activeFlightUid) return;
                 let targetRc = document.getElementById('modal-shift-select').value;
                 let flight = globalData.find(x => x.uid === activeFlightUid);
-                if (flight) {
-                    flight.Reclaim = targetRc;
-                    flight.isShifted = (flight.Reclaim !== flight.OriginalReclaim);
-                }
+                if (flight) { flight.Reclaim = targetRc; flight.isShifted = (flight.Reclaim !== flight.OriginalReclaim); }
                 document.getElementById('flight-action-modal').classList.add('hidden');
                 updateDashboardWithLoader();
             });
@@ -1387,15 +1339,11 @@
             document.getElementById('btn-confirm-reset').addEventListener('click', () => {
                 if (!activeFlightUid) return;
                 let flight = globalData.find(x => x.uid === activeFlightUid);
-                if (flight) {
-                    flight.Reclaim = flight.OriginalReclaim;
-                    flight.isShifted = false;
-                }
+                if (flight) { flight.Reclaim = flight.OriginalReclaim; flight.isShifted = false; }
                 document.getElementById('flight-action-modal').classList.add('hidden');
                 updateDashboardWithLoader();
             });
 
-            // GLOBAL FORMULA TOOLTIP LOGIC
             document.addEventListener('mouseover', (e) => {
                 let target = e.target.closest('.formula-action-trigger');
                 if(!target) return;
@@ -1432,14 +1380,10 @@
                 if(target) document.getElementById('formula-custom-tooltip').style.opacity = '0';
             });
 
-            // EXPORT EXCEL LOGIC
             const btnExport = document.getElementById('btn-export-excel');
             if (btnExport) {
                 btnExport.addEventListener('click', () => {
-                    if (!window.currentTableData || window.currentTableData.length === 0) {
-                        alert("No data available to export.");
-                        return;
-                    }
+                    if (!window.currentTableData || window.currentTableData.length === 0) { alert("No data available to export."); return; }
                     
                     const pad = (n) => String(n).padStart(2, '0');
                     const formatDt = (d) => {
@@ -1450,18 +1394,9 @@
                     };
 
                     let exportData = window.currentTableData.map(d => ({
-                        "ATA": formatDt(d.ATA),
-                        "Flight No.": d.Flight,
-                        "Aircraft": d.Aircraft,
-                        "Reclaim": d.Reclaim,
-                        "Bag Count": d.BagCount,
-                        "BR": d.BreakDownDisplay,
-                        "FB BR": formatDt(d.FirstBagBRRaw),
-                        "LB BR": formatDt(d.LastBagBRRaw),
-                        "BR Duration": d.DurationDisplay,
-                        "FB Reclaim": formatDt(d.FirstBagCLRaw),
-                        "LB Reclaim": formatDt(d.LastBagCLRaw),
-                        "Reclaim Duration": d.DurationReclaimDisplay
+                        "ATA": formatDt(d.ATA), "Flight No.": d.Flight, "Aircraft": d.Aircraft, "Reclaim": d.Reclaim, "Bag Count": d.BagCount,
+                        "BR": d.BreakDownDisplay, "FB BR": formatDt(d.FirstBagBRRaw), "LB BR": formatDt(d.LastBagBRRaw), "BR Duration": d.DurationDisplay,
+                        "FB Reclaim": formatDt(d.FirstBagCLRaw), "LB Reclaim": formatDt(d.LastBagCLRaw), "Reclaim Duration": d.DurationReclaimDisplay
                     }));
 
                     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -1473,40 +1408,22 @@
                     
                     const d = new Date();
                     const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-                    
                     XLSX.writeFile(wb, `Reclaim_Details_${rcName}_${dateStr}.xlsx`);
                 });
             }
 
-            // PAN FUNCTION (DRAG TO SCROLL) FOR TIMELINE TABLE
             const slider = document.getElementById('timelineTableContainer');
-            let isDown = false;
-            let startX;
-            let scrollLeft;
+            let isDown = false; let startX; let scrollLeft;
 
             slider.addEventListener('mousedown', (e) => {
-                isDown = true;
-                slider.classList.add('cursor-grabbing');
-                slider.classList.remove('cursor-grab');
-                startX = e.pageX - slider.offsetLeft;
-                scrollLeft = slider.scrollLeft;
+                isDown = true; slider.classList.add('cursor-grabbing'); slider.classList.remove('cursor-grab');
+                startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft;
             });
-            slider.addEventListener('mouseleave', () => {
-                isDown = false;
-                slider.classList.remove('cursor-grabbing');
-                slider.classList.add('cursor-grab');
-            });
-            slider.addEventListener('mouseup', () => {
-                isDown = false;
-                slider.classList.remove('cursor-grabbing');
-                slider.classList.add('cursor-grab');
-            });
+            slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('cursor-grabbing'); slider.classList.add('cursor-grab'); });
+            slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('cursor-grabbing'); slider.classList.add('cursor-grab'); });
             slider.addEventListener('mousemove', (e) => {
-                if (!isDown) return;
-                e.preventDefault();
-                const x = e.pageX - slider.offsetLeft;
-                const walk = (x - startX) * 1.5; // Scroll speed multiplier
-                slider.scrollLeft = scrollLeft - walk;
+                if (!isDown) return; e.preventDefault();
+                const x = e.pageX - slider.offsetLeft; const walk = (x - startX) * 1.5; slider.scrollLeft = scrollLeft - walk;
             });
         }
 
@@ -1535,12 +1452,16 @@
             
             renderKPIs(filteredData);
             
-            // Yield UI Thread to let Loader Spin
             setTimeout(() => {
                 handleReclaimDetails(filteredData, rcFilterVal, selectedReclaims);
                 setTimeout(() => {
-                    renderCharts(filteredData);
-                    loader.classList.add('hidden');
+                    try {
+                        renderCharts(filteredData);
+                    } catch (err) {
+                        console.error("Error during rendering charts: ", err);
+                    } finally {
+                        loader.classList.add('hidden');
+                    }
                 }, 10);
             }, 10);
         }
@@ -1614,21 +1535,9 @@
                             let durStr = formatTimeExcel(brDurMins / 1440);
                             
                             combinedTableData.push({
-                                isSim: true,
-                                ATA: ataDate,
-                                Flight: `Dummy Flight ${simId}`,
-                                Aircraft: acTypeStr.join(', '),
-                                Reclaim: targetReclaim,
-                                BagCount: totalBags,
-                                BreakDownDisplay: 'Simulated',
-                                FirstBagBRRaw: fbBrDate,
-                                LastBagBRRaw: lbBrDate,
-                                DurationDisplay: durStr,
-                                FirstBagCLRaw: fbRecDate,
-                                LastBagCLRaw: lbRecDate,
-                                DurationReclaimDisplay: durStr,
-                                DurationNum: brDurMins,
-                                ReclaimDurationNum: brDurMins
+                                isSim: true, ATA: ataDate, Flight: `Dummy Flight ${simId}`, Aircraft: acTypeStr.join(', '), Reclaim: targetReclaim, BagCount: totalBags,
+                                BreakDownDisplay: 'Simulated', FirstBagBRRaw: fbBrDate, LastBagBRRaw: lbBrDate, DurationDisplay: durStr, FirstBagCLRaw: fbRecDate,
+                                LastBagCLRaw: lbRecDate, DurationReclaimDisplay: durStr, DurationNum: brDurMins, ReclaimDurationNum: brDurMins
                             });
                             currentDay.setDate(currentDay.getDate() + 1);
                         }
@@ -1663,7 +1572,6 @@
                         else if (diffMins >= -15) circleClass = 'bg-green-500';
                         else circleClass = 'bg-yellow-400';
                     }
-                    
                     flightBox = `
                         <div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1">
                             <span class="flight-action-trigger has-table-tooltip cursor-pointer truncate hover:underline ${textClass}" data-uid="${d.uid}" data-type="flight">${d.isShifted ? '<span class="text-[0.6rem] font-bold bg-orange-200 text-orange-800 px-1 rounded mr-1 not-italic">Shifted</span>' : ''}${d.Flight}</span>
@@ -1671,11 +1579,7 @@
                         </div>
                     `;
                 } else {
-                    flightBox = `
-                        <div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1">
-                            <span class="truncate">${d.Flight}</span>
-                        </div>
-                    `;
+                    flightBox = `<div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1"><span class="truncate">${d.Flight}</span></div>`;
                 }
 
                 return `
@@ -1706,12 +1610,9 @@
             if(totalFlights > 0) {
                 maxFlight = data[0];
                 data.forEach(d => {
-                    totalBags += d.BagCount;
-                    totalBRDur += d.DurationNum;
-                    totalRecDur += d.ReclaimDurationNum;
+                    totalBags += d.BagCount; totalBRDur += d.DurationNum; totalRecDur += d.ReclaimDurationNum;
                     let ac = (d.Aircraft || '').toUpperCase();
-                    if(ac.includes('NARROW') || ac === 'NB') nbCount++;
-                    else if(ac.includes('WIDE') || ac === 'WB') wbCount++;
+                    if(ac.includes('NARROW') || ac === 'NB') nbCount++; else if(ac.includes('WIDE') || ac === 'WB') wbCount++;
                     if(d.ReclaimDurationNum > maxFlight.ReclaimDurationNum) maxFlight = d;
                 });
             }
@@ -1721,7 +1622,6 @@
             document.getElementById('kpi-duration').innerText = totalFlights > 0 ? (totalBRDur / totalFlights).toFixed(1) : '0';
             document.getElementById('kpi-firstbag').innerText = totalFlights > 0 ? (totalRecDur / totalFlights).toFixed(1) : '0';
             document.getElementById('kpi-maxduration').innerText = maxFlight ? maxFlight.ReclaimDurationNum.toFixed(1) : '0';
-
             document.getElementById('tooltip-flights-nb').innerHTML = `<span class="text-gray-400">Narrow Body:</span> <span class="font-bold text-green-400 ml-1">${nbCount}</span>`;
             document.getElementById('tooltip-flights-wb').innerHTML = `<span class="text-gray-400">Wide Body:</span> <span class="font-bold text-yellow-400 ml-1">${wbCount}</span>`;
 
@@ -1744,13 +1644,8 @@
         function renderTimeline(data) {
             let chartDiv = document.getElementById('chart-timeline');
             if (data.length === 0 && document.querySelectorAll('.sim-list-item').length === 0) { 
-                if (chartDiv.removeAllListeners) { 
-                    chartDiv.removeAllListeners('plotly_hover'); 
-                    chartDiv.removeAllListeners('plotly_unhover'); 
-                } 
+                if (chartDiv.removeAllListeners) { chartDiv.removeAllListeners('plotly_hover'); chartDiv.removeAllListeners('plotly_unhover'); } 
                 Plotly.purge('chart-timeline'); 
-                document.getElementById('timeline-date-range').innerHTML = ''; 
-                document.getElementById('timeline-hover-details').innerHTML = '&nbsp;';
                 document.getElementById('timelineTableContainer').innerHTML = '';
                 return; 
             }
@@ -1759,7 +1654,6 @@
             const pad = (n) => String(n).padStart(2, '0');
             const isDaily = (interval === 'daily');
             const timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
-
             const startDateStr = document.getElementById('filter-start-date').value;
             const endDateStr = document.getElementById('filter-end-date').value;
             let isOverlayActive = window.isTimelineOverlayActive === true;
@@ -1777,36 +1671,24 @@
             let bagsType = isArea ? 'scatter' : 'bar';
             let bagsMode = isArea ? 'lines' : undefined; 
 
-            let xAxisTickFormat;
-            let xAxisDtick;
-            let xAxisTickVals = undefined;
-            let xAxisTickText = undefined;
-
+            let xAxisTickFormat; let xAxisDtick; let xAxisTickVals = undefined; let xAxisTickText = undefined;
             let sTime = getLocalStartOfDay(startDateStr).getTime();
             let eTime = getLocalEndOfDay(endDateStr).getTime(); 
             let eTimeStart = getLocalStartOfDay(endDateStr).getTime();
 
             if (isDaily) {
                 if (diffDays > 20) {
-                    xAxisTickVals = [];
-                    xAxisTickText = [];
+                    xAxisTickVals = []; xAxisTickText = [];
                     for (let t = sTime; t <= eTimeStart; t += 864000000) { 
-                        xAxisTickVals.push(t);
-                        let dt = new Date(t);
+                        xAxisTickVals.push(t); let dt = new Date(t);
                         xAxisTickText.push(`${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`);
                     }
                     if (!xAxisTickVals.includes(eTimeStart)) {
-                        xAxisTickVals.push(eTimeStart);
-                        let dt = new Date(eTimeStart);
+                        xAxisTickVals.push(eTimeStart); let dt = new Date(eTimeStart);
                         xAxisTickText.push(`${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}`);
                     }
-                } else if (diffDays > 10) {
-                    xAxisTickFormat = '%d/%m';
-                    xAxisDtick = 86400000; 
-                } else {
-                    xAxisTickFormat = '%d/%m/%Y';
-                    xAxisDtick = 86400000; 
-                }
+                } else if (diffDays > 10) { xAxisTickFormat = '%d/%m'; xAxisDtick = 86400000; } 
+                else { xAxisTickFormat = '%d/%m/%Y'; xAxisDtick = 86400000; }
             } else {
                 xAxisTickFormat = '%H:%M';
                 if (diffDays > 7) xAxisDtick = 43200000; 
@@ -1823,15 +1705,11 @@
                     if (interval === 'hourly') dTime.setMinutes(0);
                     else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
                 }
-                
                 const k = dTime.getTime();
                 if (!agg[k]) agg[k] = { date: dTime, bags: 0, nb: 0, wb: 0, flights: [], reclaims: {} };
-                agg[k].bags += d.BagCount;
-                agg[k].flights.push(d); 
-                
+                agg[k].bags += d.BagCount; agg[k].flights.push(d); 
                 if (!agg[k].reclaims[d.Reclaim]) agg[k].reclaims[d.Reclaim] = 0;
                 agg[k].reclaims[d.Reclaim] += d.BagCount;
-
                 const acType = d.Aircraft.toUpperCase();
                 if (acType.includes('WIDE') || acType.includes('WB')) agg[k].wb += 1;
                 else if (acType.includes('NARROW') || acType.includes('NB') || acType !== 'UNKNOWN') agg[k].nb += 1; 
@@ -1843,22 +1721,16 @@
                 let dt = 900000; 
                 if (interval === 'daily') dt = 86400000; else if (interval === 'hourly') dt = 3600000;
                 let zeroKeyStart = firstKey - dt; let zeroKeyEnd = lastKey + dt;
-                
                 agg[zeroKeyStart] = { date: new Date(zeroKeyStart), bags: 0, nb: 0, wb: 0, flights: [], reclaims: {}, isSynthetic: true, label: "Timeline Start" };
                 agg[zeroKeyEnd] = { date: new Date(zeroKeyEnd), bags: 0, nb: 0, wb: 0, flights: [], reclaims: {}, isSynthetic: true, label: "Timeline End" };
             }
 
             let simBlocks = [];
             document.querySelectorAll('.sim-list-item').forEach(item => {
-                const timeStr = item.dataset.time;
-                const fNB = parseInt(item.dataset.fnb) || 0;
-                const bNB = parseInt(item.dataset.bnb) || 0;
-                const fWB = parseInt(item.dataset.fwb) || 0;
-                const bWB = parseInt(item.dataset.bwb) || 0;
-                const targetReclaim = item.dataset.reclaim || 'N/A';
-                const simId = item.dataset.simId;
-                const bags = (fNB * bNB) + (fWB * bWB);
-                const flightsCount = fNB + fWB;
+                const timeStr = item.dataset.time; const targetReclaim = item.dataset.reclaim || 'N/A';
+                const fNB = parseInt(item.dataset.fnb) || 0; const bNB = parseInt(item.dataset.bnb) || 0;
+                const fWB = parseInt(item.dataset.fwb) || 0; const bWB = parseInt(item.dataset.bwb) || 0;
+                const bags = (fNB * bNB) + (fWB * bWB); const flightsCount = fNB + fWB; const simId = item.dataset.simId;
                 
                 let simFlightsArr = [];
                 for(let i=0; i<fNB; i++) simFlightsArr.push({ flight: `Dummy Flight ${simId}`, ac: 'NB', bags: bNB });
@@ -1871,30 +1743,21 @@
             });
 
             let simAgg = {};
-            
             if (simBlocks.length > 0 && startDateStr && endDateStr) {
-                let currentDay = getLocalStartOfDay(startDateStr);
-                let endDay = getLocalEndOfDay(endDateStr);
-
+                let currentDay = getLocalStartOfDay(startDateStr); let endDay = getLocalEndOfDay(endDateStr);
                 while (currentDay <= endDay) {
                     simBlocks.forEach(b => {
                         let [h, m] = b.timeStr.split(':').map(Number);
-                        let dTime = new Date(currentDay);
-                        dTime.setHours(h, m, 0, 0);
-
+                        let dTime = new Date(currentDay); dTime.setHours(h, m, 0, 0);
                         if (isDaily) dTime.setHours(0, 0, 0, 0);
                         else if (interval !== 'raw') {
                             dTime.setSeconds(0, 0);
                             if (interval === 'hourly') dTime.setMinutes(0);
                             else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
                         }
-
                         const k = dTime.getTime();
                         if (!simAgg[k]) simAgg[k] = { bags: 0, flightsCount: 0, fNB: 0, fWB: 0, simIds: [], simFlights: [], reclaims: {} };
-                        simAgg[k].bags += b.bags;
-                        simAgg[k].flightsCount += b.flightsCount;
-                        simAgg[k].fNB += b.fNB;
-                        simAgg[k].fWB += b.fWB;
+                        simAgg[k].bags += b.bags; simAgg[k].flightsCount += b.flightsCount; simAgg[k].fNB += b.fNB; simAgg[k].fWB += b.fWB;
                         simAgg[k].simFlights.push(...b.simFlightsArr);
                         if (!simAgg[k].reclaims[b.targetReclaim]) simAgg[k].reclaims[b.targetReclaim] = 0;
                         simAgg[k].reclaims[b.targetReclaim] += b.bags;
@@ -1908,38 +1771,21 @@
             let unifiedKeys = Array.from(allKeysSet).sort((a, b) => a - b);
             
             let xVals = unifiedKeys.map(k => new Date(Number(k)));
-            let yBags = unifiedKeys.map(k => {
-                let actual = agg[k] ? agg[k].bags : 0;
-                let sim = isBar ? (simAgg[k] ? simAgg[k].bags : 0) : 0; 
-                return actual + sim;
-            });
-            let yNB = unifiedKeys.map(k => {
-                let actual = agg[k] ? agg[k].nb : 0;
-                let sim = simAgg[k] ? simAgg[k].fNB : 0;
-                return actual + sim;
-            });
-            let yWB = unifiedKeys.map(k => {
-                let actual = agg[k] ? agg[k].wb : 0;
-                let sim = simAgg[k] ? simAgg[k].fWB : 0;
-                return actual + sim;
-            });
+            let yBags = unifiedKeys.map(k => { return (agg[k] ? agg[k].bags : 0) + (isBar ? (simAgg[k] ? simAgg[k].bags : 0) : 0); });
+            let yNB = unifiedKeys.map(k => { return (agg[k] ? agg[k].nb : 0) + (simAgg[k] ? simAgg[k].fNB : 0); });
+            let yWB = unifiedKeys.map(k => { return (agg[k] ? agg[k].wb : 0) + (simAgg[k] ? simAgg[k].fWB : 0); });
             
             let customDataBags = unifiedKeys.map(k => {
                 if (agg[k] && agg[k].isSynthetic) {
-                    let t = agg[k].date;
-                    let dateStr = `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}`;
+                    let t = agg[k].date; let dateStr = `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}`;
                     let timeStr = isDaily ? '' : ` &nbsp;&nbsp;|&nbsp;&nbsp; <b>Time:</b> ${pad(t.getHours())}:${pad(t.getMinutes())}`;
                     return `<b>Date:</b> ${dateStr}${timeStr} &nbsp;&nbsp;|&nbsp;&nbsp; <b>No. of Bags:</b> 0 (${agg[k].label})`;
                 }
-
                 let t = new Date(Number(k));
                 let dateStr = `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}`;
                 let timeStr = isDaily ? '' : ` &nbsp;&nbsp;|&nbsp;&nbsp; <b>Time:</b> ${pad(t.getHours())}:${pad(t.getMinutes())}`;
                 
-                let actualBags = agg[k] ? agg[k].bags : 0;
-                let simBags = simAgg[k] ? simAgg[k].bags : 0;
-                let totalBags = actualBags + simBags;
-
+                let totalBags = (agg[k] ? agg[k].bags : 0) + (simAgg[k] ? simAgg[k].bags : 0);
                 if (totalBags === 0 && (!agg[k] || agg[k].flights.length === 0)) {
                     return `<b>Date:</b> ${dateStr}${timeStr} &nbsp;&nbsp;|&nbsp;&nbsp; <b>No. of Bags (Total):</b> 0 &nbsp;&nbsp;|&nbsp;&nbsp; <b>Flight (Total):</b> - &nbsp;&nbsp;|&nbsp;&nbsp; <b>Aircraft (Total):</b> - &nbsp;&nbsp;|&nbsp;&nbsp; <b>Reclaim Duration (Total):</b> -`;
                 }
@@ -1948,13 +1794,9 @@
                 let simFlights = simAgg[k] ? simAgg[k].simFlights.map(f => f.flight) : [];
                 let flights = [...new Set([...actualFlights, ...simFlights])].filter(Boolean);
 
-                let actualNb = agg[k] ? agg[k].nb : 0;
-                let actualWb = agg[k] ? agg[k].wb : 0;
-                let simNb = simAgg[k] ? simAgg[k].fNB : 0;
-                let simWb = simAgg[k] ? simAgg[k].fWB : 0;
-                
-                let totalNb = actualNb + simNb;
-                let totalWb = actualWb + simWb;
+                let actualNb = agg[k] ? agg[k].nb : 0; let actualWb = agg[k] ? agg[k].wb : 0;
+                let simNb = simAgg[k] ? simAgg[k].fNB : 0; let simWb = simAgg[k] ? simAgg[k].fWB : 0;
+                let totalNb = actualNb + simNb; let totalWb = actualWb + simWb;
 
                 let acStrArr = [];
                 if (totalNb > 0) acStrArr.push(`${totalNb} NB`);
@@ -1969,13 +1811,11 @@
                 }
                 let uniqueOtherAc = [...new Set(otherAc)].filter(Boolean);
                 if (uniqueOtherAc.length > 0) uniqueOtherAc.forEach(ac => acStrArr.push(`1 ${ac}`));
-
                 let acStr = acStrArr.length > 0 ? acStrArr.join(', ') : '-';
 
                 let actualReclaims = agg[k] ? agg[k].flights.map(f => f.DurationReclaimDisplay) : [];
                 let simReclaimDurations = [];
-                if (simAgg[k] && simBags > 0) {
-                    let timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
+                if (simAgg[k] && (simAgg[k].bags > 0)) {
                     let brDurMins = (simAgg[k].bags * timePerBag) / 60;
                     simReclaimDurations.push(formatTimeExcel(brDurMins / 1440));
                 }
@@ -1987,34 +1827,24 @@
                 return `<b>Date:</b> ${dateStr}${timeStr} &nbsp;&nbsp;|&nbsp;&nbsp; <b>No. of Bags (Total):</b> ${totalBags} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Flight (Total):</b> ${flightStr || '-'} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Aircraft (Total):</b> ${acStr} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Reclaim Duration (Total):</b> ${reclaimStr || '-'}`;
             });
 
-            // STRICT ALPHABETICAL SORTING A TO Z
             let actualReclaims = data.map(d => d.Reclaim);
             let simReclaims = simBlocks.map(b => b.targetReclaim);
             const uniqueReclaimsInView = [...new Set([...actualReclaims, ...simReclaims])].filter(a => a && a !== 'Unknown' && a !== 'N/A').sort((a, b) => a.localeCompare(b));
             const isMultipleReclaims = uniqueReclaimsInView.length > 1;
 
-            let traces = [];
-            let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
-
-            // --- HTML DATA TABLE GENERATION ---
             let tableXVals = [];
             let tableKeys = [];
             xVals.forEach((dt, i) => {
                 let t = dt.getTime();
-                if (t >= sTime && t <= eTime) {
-                    tableXVals.push(dt);
-                    tableKeys.push(unifiedKeys[i]);
-                }
+                if (t >= sTime && t <= eTime) { tableXVals.push(dt); tableKeys.push(unifiedKeys[i]); }
             });
 
             let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Reclaim</th>';
             tableXVals.forEach(dt => {
                 let dStr = "";
-                if (interval === 'daily') {
-                    dStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
-                } else {
-                    let dDate = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
-                    let dTime = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+                if (interval === 'daily') { dStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`; } 
+                else {
+                    let dDate = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`; let dTime = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
                     dStr = diffDays > 1 ? `${dDate}<br>${dTime}` : dTime;
                 }
                 tableHTML += `<th class="p-2 border text-center font-semibold text-gray-600 bg-gray-50 min-w-[55px]">${dStr}</th>`;
@@ -2029,19 +1859,14 @@
                 tableHTML += `<tr><td class="sticky left-0 bg-white z-10 p-2 border font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style="color:${rcColor}">${rc}</td>`;
                 
                 let rowSum = 0;
-
                 tableXVals.forEach((dt, i) => {
-                    let k = tableKeys[i];
-                    let actual = 0, sim = 0;
-                    if (rc === 'Total Bags') {
-                        actual = agg[k] ? agg[k].bags : 0;
-                        sim = simAgg[k] ? simAgg[k].bags : 0;
-                    } else {
+                    let k = tableKeys[i]; let actual = 0, sim = 0;
+                    if (rc === 'Total Bags') { actual = agg[k] ? agg[k].bags : 0; sim = simAgg[k] ? simAgg[k].bags : 0; } 
+                    else {
                         actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
                         sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
                     }
-                    let total = actual + sim;
-                    rowSum += total;
+                    let total = actual + sim; rowSum += total;
                     let cellText = total > 0 ? `<span class="font-bold text-gray-800">${total}</span>` : `<span class="text-gray-300">-</span>`;
                     tableHTML += `<td class="p-2 border text-center hover:bg-blue-50 transition-colors">${cellText}</td>`;
                 });
@@ -2054,9 +1879,7 @@
             if (isMultipleReclaims) {
                 tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-20 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
                 tableXVals.forEach((dt, i) => {
-                    let k = tableKeys[i];
-                    let actual = agg[k] ? agg[k].bags : 0;
-                    let sim = simAgg[k] ? simAgg[k].bags : 0;
+                    let k = tableKeys[i]; let actual = agg[k] ? agg[k].bags : 0; let sim = simAgg[k] ? simAgg[k].bags : 0;
                     let total = actual + sim;
                     let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
                     tableHTML += `<td class="p-2 border text-center bg-gray-50">${cellText}</td>`;
@@ -2066,10 +1889,9 @@
             }
             tableHTML += '</tbody></table>';
             document.getElementById('timelineTableContainer').innerHTML = tableHTML;
-            // --- END HTML DATA TABLE GENERATION ---
 
-            // --- BUILD TRACES ---
-            let paletteOverlay = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+            let traces = [];
+            let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
 
             if (isOverlayActive) {
                 let overlayTraces = [];
@@ -2077,9 +1899,7 @@
                 let activeInterval = interval === 'daily' ? 'hourly' : interval;
                 let stepO = (activeInterval === '15min' || activeInterval === 'raw') ? 900000 : 3600000;
                 let oxVals = [];
-                for (let t = baseStart; t <= baseStart + 86400000; t += stepO) { 
-                    oxVals.push(new Date(t)); 
-                }
+                for (let t = baseStart; t <= baseStart + 86400000; t += stepO) { oxVals.push(new Date(t)); }
 
                 let daysInRange = [...new Set(window.currentFilteredData.map(d => formatDateForInput(d.ATA)))].sort();
                 if(daysInRange.length === 0 && simBlocks.length > 0) daysInRange = [startDateStr];
@@ -2164,30 +1984,20 @@
                     if (isBar) {
                         chartReclaims.forEach((rc) => {
                             let rcColor = getReclaimColor(rc);
-                            let yRcBags = unifiedKeys.map(k => {
-                                let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                                let sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
-                                return actual + sim;
-                            });
+                            let yRcBags = unifiedKeys.map(k => { return ((agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0) + ((simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0); });
                             traces.push({
                                 x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                                mode: bagsMode, name: rc, 
-                                text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
-                                opacity: 1, 
-                                marker: { color: getRgba(rcColor, 0.35), line: { color: rcColor, width: 1.5 } }
+                                mode: bagsMode, name: rc, text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                                opacity: 1, marker: { color: getRgba(rcColor, 0.35), line: { color: rcColor, width: 1.5 } }
                             });
                         });
                     } else {
                         chartReclaims.forEach((rc) => {
                             let rcColor = getReclaimColor(rc);
-                            let yRcBags = unifiedKeys.map(k => {
-                                let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                                return actual;
-                            });
+                            let yRcBags = unifiedKeys.map(k => { return (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0; });
                             traces.push({
                                 x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                                fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.35), mode: bagsMode, name: rc, 
-                                text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                                fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.35), mode: bagsMode, name: rc, text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
                                 opacity: 1, marker: { color: rcColor }, line: { width: 2, color: rcColor }
                             });
                             
@@ -2198,7 +2008,6 @@
                                 let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
                                 let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
                                 let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
-
                                 if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
                                 else { yEstRc.push(null); }
                             }
@@ -2211,16 +2020,14 @@
                     if (isBar) {
                         traces.push({ 
                             x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                            mode: bagsMode, name: 'Actual Bags', 
-                            text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                            mode: bagsMode, name: 'Actual Bags', text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
                             textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
                             opacity: 1, marker: { color: getRgba('#3399FF', 0.35), line: { color: '#3399FF', width: 1.5 } }
                         });
                     } else {
                         traces.push({ 
                             x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                            fill: 'tozeroy', fillcolor: getRgba('#3399FF', 0.4), mode: bagsMode, name: 'Actual Bags', 
-                            text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                            fill: 'tozeroy', fillcolor: getRgba('#3399FF', 0.4), mode: bagsMode, name: 'Actual Bags', text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
                             textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
                             opacity: 1, marker: { color: '#3399FF' }, line: { width: 2, color: '#3399FF' }
                         });
@@ -2238,10 +2045,7 @@
                         if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
                     }
                 }
-            }
-
-            // AIRCRAFT COUNTS (Not overlaid to keep it clean)
-            if (!isOverlayActive) {
+                
                 traces.push(
                     { x: xVals, y: yNB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total NB', 
                     text: showDailyLabels ? yNB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
@@ -2255,11 +2059,9 @@
             }
 
             let maxCombinedBags = 0; let peakKey = null;
-
             for (let i = 0; i < unifiedKeys.length; i++) {
                 let k = unifiedKeys[i];
-                let actualBags = agg[k] ? agg[k].bags : 0; 
-                let simulatedBags = simAgg[k] ? simAgg[k].bags : 0;
+                let actualBags = agg[k] ? agg[k].bags : 0; let simulatedBags = simAgg[k] ? simAgg[k].bags : 0;
                 let combined = actualBags + simulatedBags;
                 if (combined > maxCombinedBags) { maxCombinedBags = combined; peakKey = k; }
             }
@@ -2342,35 +2144,23 @@
             document.getElementById('out-avg-transit').innerText = `Transit: ${avgTransitMinStr}`;
             document.getElementById('out-overlap-flights-list').innerHTML = overlapFlightsHTML;
 
-            let topDomainH = 65 / 400;
-            let gapDomainH = 15 / 400;
+            let topDomainH = 65 / 400; let gapDomainH = 15 / 400;
             let yDomainBags = [0, 1 - topDomainH - gapDomainH];
             let yDomainAircraft = [1 - topDomainH, 1];
 
             let layoutArgs = {
                 margin: { t: 10, l: 60, r: 60, b: 60 },
                 font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                hovermode: 'x', 
-                shapes: [],
+                hovermode: 'x', shapes: [],
                 xaxis: { 
-                    title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, 
-                    tickvals: xAxisTickVals, ticktext: xAxisTickText,
+                    title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, tickvals: xAxisTickVals, ticktext: xAxisTickText,
                     range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)],
                     hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M',
                     showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1,
-                    anchor: 'y', 
-                    side: 'bottom'
+                    anchor: 'y', side: 'bottom'
                 },
-                yaxis: { 
-                    title: 'No. of Bags', side: 'left', showgrid: true, domain: yDomainBags, 
-                    rangemode: 'nonnegative', 
-                    zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1
-                },
-                yaxis2: { 
-                    title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, zeroline: false, tickformat: 'd', 
-                    domain: yDomainAircraft, 
-                    rangemode: 'nonnegative' 
-                },
+                yaxis: { title: 'No. of Bags', side: 'left', showgrid: true, domain: yDomainBags, rangemode: 'nonnegative', zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1 },
+                yaxis2: { title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, zeroline: false, tickformat: 'd', domain: yDomainAircraft, rangemode: 'nonnegative' },
                 showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) }
             };
 
@@ -2378,21 +2168,15 @@
                 let baseStart = new Date(2000, 0, 1, 0, 0, 0).getTime();
                 let activeInterval = interval === 'daily' ? 'hourly' : interval;
                 let stepO = (activeInterval === '15min' || activeInterval === 'raw') ? 900000 : 3600000;
-                layoutArgs.xaxis.tickformat = '%H:%M';
-                layoutArgs.xaxis.dtick = stepO;
+                layoutArgs.xaxis.tickformat = '%H:%M'; layoutArgs.xaxis.dtick = stepO;
                 layoutArgs.xaxis.range = [baseStart - (stepO/2), baseStart + 86400000 + (stepO/2)];
                 layoutArgs.xaxis.hoverformat = '%H:%M';
-                // Hide aircraft axis for overlay
                 layoutArgs.yaxis2.visible = false;
             }
 
             Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
 
-            if (chartDiv.removeAllListeners) {
-                chartDiv.removeAllListeners('plotly_hover');
-                chartDiv.removeAllListeners('plotly_unhover');
-            }
-            
+            if (chartDiv.removeAllListeners) { chartDiv.removeAllListeners('plotly_hover'); chartDiv.removeAllListeners('plotly_unhover'); }
             chartDiv.on('plotly_hover', function(data) {
                 if (data.points.length > 0 && !isOverlayActive) {
                     let pt = data.points.find(p => p.customdata !== undefined); 
@@ -2407,205 +2191,185 @@
         const layoutCommon = { margin: { t: 10, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff' };
 
         function renderCharts(data) {
-            requestAnimationFrame(() => {
-                if (data.length === 0) { 
-                    ['chart-bar', 'chart-histogram'].forEach(id => { 
-                        let el = document.getElementById(id);
-                        if(el) { if(el.removeAllListeners){ el.removeAllListeners('plotly_hover'); el.removeAllListeners('plotly_unhover'); } Plotly.purge(id); }
-                    }); 
-                    renderTimeline(data); 
-                    return; 
-                }
-                
-                renderTimeline(data);
-                
-                if(document.getElementById('chart-bar')) {
-                    const interval = document.getElementById('slicer-interval').value;
-                    const isDaily = (interval === 'daily');
-                    const timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
+            if (data.length === 0 && document.querySelectorAll('.sim-list-item').length === 0) { 
+                ['chart-bar', 'chart-histogram'].forEach(id => { let el = document.getElementById(id); if(el) { Plotly.purge(id); } }); 
+                renderTimeline(data); 
+                return; 
+            }
+            
+            renderTimeline(data);
+            
+            if(document.getElementById('chart-bar')) {
+                const interval = document.getElementById('slicer-interval').value;
+                const isDaily = (interval === 'daily');
+                const timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
 
-                    let rcMetrics = {};
-                    data.forEach(d => {
-                        let rc = d.Reclaim;
-                        if (!rcMetrics[rc]) rcMetrics[rc] = { bags: 0, flights: 0, nb: 0, wb: 0, brDurSum: 0, recDurSum: 0, maxRecDur: 0, flightsList: [] };
-                        rcMetrics[rc].bags += d.BagCount; rcMetrics[rc].flights += 1;
-                        let ac = (d.Aircraft || '').toUpperCase();
-                        if (ac.includes('NARROW') || ac === 'NB') rcMetrics[rc].nb += 1; else if (ac.includes('WIDE') || ac === 'WB') rcMetrics[rc].wb += 1;
-                        rcMetrics[rc].brDurSum += d.DurationNum; rcMetrics[rc].recDurSum += d.ReclaimDurationNum;
-                        if (d.ReclaimDurationNum > rcMetrics[rc].maxRecDur) rcMetrics[rc].maxRecDur = d.ReclaimDurationNum;
-                        rcMetrics[rc].flightsList.push(d);
-                    });
+                let rcMetrics = {};
+                data.forEach(d => {
+                    let rc = d.Reclaim;
+                    if (!rcMetrics[rc]) rcMetrics[rc] = { bags: 0, flights: 0, nb: 0, wb: 0, brDurSum: 0, recDurSum: 0, maxRecDur: 0, flightsList: [] };
+                    rcMetrics[rc].bags += d.BagCount; rcMetrics[rc].flights += 1;
+                    let ac = (d.Aircraft || '').toUpperCase();
+                    if (ac.includes('NARROW') || ac === 'NB') rcMetrics[rc].nb += 1; else if (ac.includes('WIDE') || ac === 'WB') rcMetrics[rc].wb += 1;
+                    rcMetrics[rc].brDurSum += d.DurationNum; rcMetrics[rc].recDurSum += d.ReclaimDurationNum;
+                    if (d.ReclaimDurationNum > rcMetrics[rc].maxRecDur) rcMetrics[rc].maxRecDur = d.ReclaimDurationNum;
+                    rcMetrics[rc].flightsList.push(d);
+                });
 
-                    Object.keys(rcMetrics).forEach(rc => {
-                        let m = rcMetrics[rc]; let agg = {};
-                        m.flightsList.forEach(d => {
-                            let dTime = new Date(d.ATA.getTime());
-                            if (isDaily) dTime.setHours(0, 0, 0, 0);
-                            else if (interval !== 'raw') {
-                                dTime.setSeconds(0, 0);
-                                if (interval === 'hourly') dTime.setMinutes(0);
-                                else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
-                            }
-                            let k = dTime.getTime();
-                            if (!agg[k]) agg[k] = { bags: 0, flights: [] };
-                            agg[k].bags += d.BagCount; agg[k].flights.push(d);
-                        });
-
-                        let brUtils = []; let recUtils = []; let maxBags = -1;
-
-                        Object.keys(agg).forEach(k => {
-                            let bucket = agg[k];
-                            let actualBRWindowSecs = 0; let actualRecWindowSecs = 0;
-                            
-                            let fbBRTimes = bucket.flights.map(f => f.FirstBagBRRaw ? f.FirstBagBRRaw.getTime() : null).filter(Boolean);
-                            let lbBRTimes = bucket.flights.map(f => f.LastBagBRRaw ? f.LastBagBRRaw.getTime() : null).filter(Boolean);
-                            if (fbBRTimes.length > 0 && lbBRTimes.length > 0) actualBRWindowSecs = (Math.max(...lbBRTimes) - Math.min(...fbBRTimes)) / 1000;
-
-                            let fbRecTimes = bucket.flights.map(f => f.FirstBagCLRaw ? f.FirstBagCLRaw.getTime() : null).filter(Boolean);
-                            let lbRecTimes = bucket.flights.map(f => f.LastBagCLRaw ? f.LastBagCLRaw.getTime() : null).filter(Boolean);
-                            if (fbRecTimes.length > 0 && lbRecTimes.length > 0) actualRecWindowSecs = (Math.max(...lbRecTimes) - Math.min(...fbRecTimes)) / 1000;
-
-                            let fallbackSecs = 900;
-                            if (interval === 'hourly') fallbackSecs = 3600; else if (interval === 'daily') fallbackSecs = 86400;
-
-                            if (actualBRWindowSecs <= 0) actualBRWindowSecs = fallbackSecs;
-                            if (actualRecWindowSecs <= 0) actualRecWindowSecs = fallbackSecs;
-
-                            let reqSecs = bucket.bags * timePerBag;
-                            let brU = (reqSecs / actualBRWindowSecs) * 100;
-                            let recU = (reqSecs / actualRecWindowSecs) * 100;
-                            
-                            brUtils.push(brU); recUtils.push(recU);
-                            if (bucket.bags > maxBags) { maxBags = bucket.bags; m.peakBRUtil = brU; m.peakRecUtil = recU; }
-                        });
-
-                        m.avgBRUtil = brUtils.length ? (brUtils.reduce((a,b)=>a+b,0)/brUtils.length) : 0;
-                        m.avgRecUtil = recUtils.length ? (recUtils.reduce((a,b)=>a+b,0)/recUtils.length) : 0;
-                        if(m.peakBRUtil === undefined) m.peakBRUtil = 0;
-                        if(m.peakRecUtil === undefined) m.peakRecUtil = 0;
-                    });
-
-                    let rcKeys = Object.keys(rcMetrics);
-                    let sortVal = document.getElementById('reclaim-sort') ? document.getElementById('reclaim-sort').value : 'bags-desc';
-                    
-                    if (sortVal === 'bags-desc') rcKeys.sort((a,b) => rcMetrics[b].bags - rcMetrics[a].bags);
-                    else if (sortVal === 'bags-asc') rcKeys.sort((a,b) => rcMetrics[a].bags - rcMetrics[b].bags);
-                    else if (sortVal === 'alpha') rcKeys.sort((a,b) => a.localeCompare(b));
-                    else if (sortVal === 'area') {
-                        const mtb = ['A','B','H','J','K','L','M']; const sat = ['C','E','F','G'];
-                        const getGroup = (rc) => { let letter = rc.trim()[0]?.toUpperCase(); if (mtb.includes(letter)) return 1; if (sat.includes(letter)) return 2; return 3; };
-                        rcKeys.sort((a,b) => { let gA = getGroup(a); let gB = getGroup(b); if (gA !== gB) return gA - gB; return a.localeCompare(b); });
-                    }
-
-                    let customdata = rcKeys.map(k => {
-                        let m = rcMetrics[k];
-                        let avgBR = m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0';
-                        let avgRec = m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0';
-                        return [ m.flights, m.nb, m.wb, m.bags.toLocaleString(), avgBR, avgRec, m.maxRecDur.toFixed(1), m.avgBRUtil.toFixed(1), m.peakBRUtil.toFixed(1), m.avgRecUtil.toFixed(1), m.peakRecUtil.toFixed(1) ];
-                    });
-
-                    Plotly.react('chart-bar', [{ 
-                        x: rcKeys, y: rcKeys.map(k => rcMetrics[k].bags), customdata: customdata, hoverinfo: 'none', type: 'bar',
-                        text: rcKeys.map(k => rcMetrics[k].bags.toLocaleString()), textposition: 'inside', insidetextanchor: 'middle', 
-                        textangle: 0, constraintext: 'none', 
-                        textfont: { color: '#1f2937', weight: 'bold', size: 11 },
-                        marker: { 
-                            color: rcKeys.map(k => getRgba(getReclaimColor(k), 0.35)), 
-                            line: { color: rcKeys.map(k => getReclaimColor(k)), width: 1.5 } 
+                Object.keys(rcMetrics).forEach(rc => {
+                    let m = rcMetrics[rc]; let agg = {};
+                    m.flightsList.forEach(d => {
+                        let dTime = new Date(d.ATA.getTime());
+                        if (isDaily) dTime.setHours(0, 0, 0, 0);
+                        else if (interval !== 'raw') {
+                            dTime.setSeconds(0, 0);
+                            if (interval === 'hourly') dTime.setMinutes(0);
+                            else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
                         }
-                    }], { 
-                        margin: { t: 10, l: 60, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                        xaxis: { title: 'Reclaim', tickangle: 0 }, yaxis: { title: 'Total Bags Handled', automargin: true }, bargap: 0.15 
-                    }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Reclaim_Load', scale: 2 } });
-
-                    let chartBarDiv = document.getElementById('chart-bar');
-                    if (!document.getElementById('bar-custom-tooltip')) {
-                        let tooltip = document.createElement('div');
-                        tooltip.id = 'bar-custom-tooltip';
-                        tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
-                        tooltip.innerHTML = `<div id="bar-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
-                        document.body.appendChild(tooltip);
-                    }
-                    
-                    if (chartBarDiv.removeAllListeners) {
-                        chartBarDiv.removeAllListeners('plotly_hover');
-                        chartBarDiv.removeAllListeners('plotly_unhover');
-                    }
-
-                    chartBarDiv.on('plotly_hover', function(data) {
-                        let pt = data.points[0]; if (!pt || !pt.customdata) return;
-                        let cd = pt.customdata;
-                        let html = `
-                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Reclaim Details: <span class="text-blue-400">${pt.x}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${cd[0]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${cd[1]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${cd[2]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${cd[3]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${cd[4]} min</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${cd[5]} min</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${cd[6]} min</span></div>
-                            <div class="mb-1"><span class="text-gray-400">BR Util (Avg | Peak):</span> <span class="font-bold text-teal-400 ml-1">${cd[7]}%</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-teal-400">${cd[8]}%</span></div>
-                            <div><span class="text-gray-400">Rec Util (Avg | Peak):</span> <span class="font-bold text-purple-400 ml-1">${cd[9]}%</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-purple-400">${cd[10]}%</span></div>
-                        `;
-                        document.getElementById('bar-tooltip-content').innerHTML = html;
-                        let tooltip = document.getElementById('bar-custom-tooltip');
-                        let evt = data.event;
-                        tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; tooltip.style.opacity = '1';
+                        let k = dTime.getTime();
+                        if (!agg[k]) agg[k] = { bags: 0, flights: [] };
+                        agg[k].bags += d.BagCount; agg[k].flights.push(d);
                     });
 
-                    chartBarDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
-                    
-                    if (!chartBarDiv._customMouseAttached) {
-                        chartBarDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } });
-                        chartBarDiv._customMouseAttached = true;
-                    }
+                    let brUtils = []; let recUtils = []; let maxBags = -1;
+
+                    Object.keys(agg).forEach(k => {
+                        let bucket = agg[k];
+                        let actualBRWindowSecs = 0; let actualRecWindowSecs = 0;
+                        let fbBRTimes = bucket.flights.map(f => f.FirstBagBRRaw ? f.FirstBagBRRaw.getTime() : null).filter(Boolean);
+                        let lbBRTimes = bucket.flights.map(f => f.LastBagBRRaw ? f.LastBagBRRaw.getTime() : null).filter(Boolean);
+                        if (fbBRTimes.length > 0 && lbBRTimes.length > 0) actualBRWindowSecs = (Math.max(...lbBRTimes) - Math.min(...fbBRTimes)) / 1000;
+
+                        let fbRecTimes = bucket.flights.map(f => f.FirstBagCLRaw ? f.FirstBagCLRaw.getTime() : null).filter(Boolean);
+                        let lbRecTimes = bucket.flights.map(f => f.LastBagCLRaw ? f.LastBagCLRaw.getTime() : null).filter(Boolean);
+                        if (fbRecTimes.length > 0 && lbRecTimes.length > 0) actualRecWindowSecs = (Math.max(...lbRecTimes) - Math.min(...fbRecTimes)) / 1000;
+
+                        let fallbackSecs = 900;
+                        if (interval === 'hourly') fallbackSecs = 3600; else if (interval === 'daily') fallbackSecs = 86400;
+
+                        if (actualBRWindowSecs <= 0) actualBRWindowSecs = fallbackSecs;
+                        if (actualRecWindowSecs <= 0) actualRecWindowSecs = fallbackSecs;
+
+                        let reqSecs = bucket.bags * timePerBag;
+                        let brU = (reqSecs / actualBRWindowSecs) * 100;
+                        let recU = (reqSecs / actualRecWindowSecs) * 100;
+                        
+                        brUtils.push(brU); recUtils.push(recU);
+                        if (bucket.bags > maxBags) { maxBags = bucket.bags; m.peakBRUtil = brU; m.peakRecUtil = recU; }
+                    });
+
+                    m.avgBRUtil = brUtils.length ? (brUtils.reduce((a,b)=>a+b,0)/brUtils.length) : 0;
+                    m.avgRecUtil = recUtils.length ? (recUtils.reduce((a,b)=>a+b,0)/recUtils.length) : 0;
+                    if(m.peakBRUtil === undefined) m.peakBRUtil = 0; if(m.peakRecUtil === undefined) m.peakRecUtil = 0;
+                });
+
+                let rcKeys = Object.keys(rcMetrics);
+                let sortVal = document.getElementById('reclaim-sort') ? document.getElementById('reclaim-sort').value : 'bags-desc';
+                
+                if (sortVal === 'bags-desc') rcKeys.sort((a,b) => rcMetrics[b].bags - rcMetrics[a].bags);
+                else if (sortVal === 'bags-asc') rcKeys.sort((a,b) => rcMetrics[a].bags - rcMetrics[b].bags);
+                else if (sortVal === 'alpha') rcKeys.sort((a,b) => a.localeCompare(b));
+                else if (sortVal === 'area') {
+                    const mtb = ['A','B','H','J','K','L','M']; const sat = ['C','E','F','G'];
+                    const getGroup = (rc) => { let letter = rc.trim()[0]?.toUpperCase(); if (mtb.includes(letter)) return 1; if (sat.includes(letter)) return 2; return 3; };
+                    rcKeys.sort((a,b) => { let gA = getGroup(a); let gB = getGroup(b); if (gA !== gB) return gA - gB; return a.localeCompare(b); });
+                }
+
+                let customdata = rcKeys.map(k => {
+                    let m = rcMetrics[k];
+                    let avgBR = m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0';
+                    let avgRec = m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0';
+                    return [ m.flights, m.nb, m.wb, m.bags.toLocaleString(), avgBR, avgRec, m.maxRecDur.toFixed(1), m.avgBRUtil.toFixed(1), m.peakBRUtil.toFixed(1), m.avgRecUtil.toFixed(1), m.peakRecUtil.toFixed(1) ];
+                });
+
+                Plotly.react('chart-bar', [{ 
+                    x: rcKeys, y: rcKeys.map(k => rcMetrics[k].bags), customdata: customdata, hoverinfo: 'none', type: 'bar',
+                    text: rcKeys.map(k => rcMetrics[k].bags.toLocaleString()), textposition: 'inside', insidetextanchor: 'middle', 
+                    textangle: 0, constraintext: 'none', 
+                    textfont: { color: '#1f2937', weight: 'bold', size: 11 },
+                    marker: { color: rcKeys.map(k => getRgba(getReclaimColor(k), 0.35)), line: { color: rcKeys.map(k => getReclaimColor(k)), width: 1.5 } }
+                }], { 
+                    margin: { t: 10, l: 60, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+                    xaxis: { title: 'Reclaim', tickangle: 0 }, yaxis: { title: 'Total Bags Handled', automargin: true }, bargap: 0.15 
+                }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Reclaim_Load', scale: 2 } });
+
+                let chartBarDiv = document.getElementById('chart-bar');
+                if (!document.getElementById('bar-custom-tooltip')) {
+                    let tooltip = document.createElement('div');
+                    tooltip.id = 'bar-custom-tooltip';
+                    tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
+                    tooltip.innerHTML = `<div id="bar-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
                 }
                 
-                if(document.getElementById('chart-histogram')) {
-                    Plotly.react('chart-histogram', [{ 
-                        x: data.map(d => d.DurationNum), 
-                        type: 'histogram', 
-                        hoverinfo: 'none', 
-                        marker: { color: palette[0], line: { color: 'white', width: 1 } }, 
-                        opacity: 0.8 
-                    }], { ...layoutCommon, xaxis: { title: 'Duration (mins)' }, yaxis: { title: 'Count of Flights' }, bargap: 0.05 }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overall_BR_Duration_Distribution', scale: 2 } });
+                if (chartBarDiv.removeAllListeners) { chartBarDiv.removeAllListeners('plotly_hover'); chartBarDiv.removeAllListeners('plotly_unhover'); }
 
-                    let chartHistDiv = document.getElementById('chart-histogram');
-                    if (!document.getElementById('hist-custom-tooltip')) {
-                        let tooltip = document.createElement('div');
-                        tooltip.id = 'hist-custom-tooltip';
-                        tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
-                        tooltip.innerHTML = `<div id="hist-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
-                        document.body.appendChild(tooltip);
-                    }
+                chartBarDiv.on('plotly_hover', function(data) {
+                    let pt = data.points[0]; if (!pt || !pt.customdata) return;
+                    let cd = pt.customdata;
+                    let html = `
+                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Reclaim Details: <span class="text-blue-400">${pt.x}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${cd[0]}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${cd[1]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${cd[2]}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${cd[3]}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${cd[4]} min</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${cd[5]} min</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${cd[6]} min</span></div>
+                        <div class="mb-1"><span class="text-gray-400">BR Util (Avg | Peak):</span> <span class="font-bold text-teal-400 ml-1">${cd[7]}%</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-teal-400">${cd[8]}%</span></div>
+                        <div><span class="text-gray-400">Rec Util (Avg | Peak):</span> <span class="font-bold text-purple-400 ml-1">${cd[9]}%</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-purple-400">${cd[10]}%</span></div>
+                    `;
+                    document.getElementById('bar-tooltip-content').innerHTML = html;
+                    let tooltip = document.getElementById('bar-custom-tooltip');
+                    let evt = data.event;
+                    tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; tooltip.style.opacity = '1';
+                });
 
-                    if (chartHistDiv.removeAllListeners) {
-                        chartHistDiv.removeAllListeners('plotly_hover');
-                        chartHistDiv.removeAllListeners('plotly_unhover');
-                    }
-                    
-                    chartHistDiv.on('plotly_hover', function(data) {
-                        let pt = data.points[0]; if (!pt) return;
-                        let binStr = (pt.x !== undefined && pt.x !== null) ? pt.x : '0';
-                        let count = pt.y;
-                        
-                        let html = `
-                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Duration Bucket: <span class="text-blue-400">~${binStr} mins</span></div>
-                            <div><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-white ml-1">${count}</span></div>
-                        `;
-                        document.getElementById('hist-tooltip-content').innerHTML = html;
-                        let tooltip = document.getElementById('hist-custom-tooltip');
-                        let evt = data.event;
-                        tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; tooltip.style.opacity = '1';
-                    });
-
-                    chartHistDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
-                    
-                    if (!chartHistDiv._customMouseAttached) {
-                        chartHistDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } });
-                        chartHistDiv._customMouseAttached = true;
-                    }
+                chartBarDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
+                
+                if (!chartBarDiv._customMouseAttached) {
+                    chartBarDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } });
+                    chartBarDiv._customMouseAttached = true;
                 }
-            });
+            }
+            
+            if(document.getElementById('chart-histogram')) {
+                Plotly.react('chart-histogram', [{ 
+                    x: data.map(d => d.DurationNum), type: 'histogram', hoverinfo: 'none', marker: { color: palette[0], line: { color: 'white', width: 1 } }, opacity: 0.8 
+                }], { ...layoutCommon, xaxis: { title: 'Duration (mins)' }, yaxis: { title: 'Count of Flights' }, bargap: 0.05 }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overall_BR_Duration_Distribution', scale: 2 } });
+
+                let chartHistDiv = document.getElementById('chart-histogram');
+                if (!document.getElementById('hist-custom-tooltip')) {
+                    let tooltip = document.createElement('div');
+                    tooltip.id = 'hist-custom-tooltip';
+                    tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
+                    tooltip.innerHTML = `<div id="hist-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
+                }
+
+                if (chartHistDiv.removeAllListeners) { chartHistDiv.removeAllListeners('plotly_hover'); chartHistDiv.removeAllListeners('plotly_unhover'); }
+                
+                chartHistDiv.on('plotly_hover', function(data) {
+                    let pt = data.points[0]; if (!pt) return;
+                    let binStr = (pt.x !== undefined && pt.x !== null) ? pt.x : '0';
+                    let count = pt.y;
+                    
+                    let html = `
+                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Duration Bucket: <span class="text-blue-400">~${binStr} mins</span></div>
+                        <div><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-white ml-1">${count}</span></div>
+                    `;
+                    document.getElementById('hist-tooltip-content').innerHTML = html;
+                    let tooltip = document.getElementById('hist-custom-tooltip');
+                    let evt = data.event;
+                    tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; tooltip.style.opacity = '1';
+                });
+
+                chartHistDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
+                
+                if (!chartHistDiv._customMouseAttached) {
+                    chartHistDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } });
+                    chartHistDiv._customMouseAttached = true;
+                }
+            }
         }
     </script>
 <script>
