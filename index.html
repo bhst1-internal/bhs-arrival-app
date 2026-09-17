@@ -1794,7 +1794,7 @@
                     let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
                     if(actualTimes.length === 0) continue;
                     
-                    // IMPROVEMENT 2: Anchor exactly 1 step before the first point and 1 step after the last point to prevent floating
+                    // Anchor exactly 1 step before the first point and 1 step after the last point to prevent floating
                     let minT = Math.min(...actualTimes) - step; 
                     let maxT = Math.max(...actualTimes) + step;   
                     
@@ -1819,9 +1819,10 @@
                         mode: 'lines',
                         fill: 'tozeroy',
                         name: dateStr,
-                        hoverinfo: 'none', // Custom tooltip
+                        hovertemplate: "<extra></extra>", // Replaces hoverinfo: 'none' to enable the data point highlighting (dots)
                         opacity: 0.7,
                         line: { shape: 'linear', width: 2, color: cColor }, 
+                        marker: { color: cColor }, // Add marker definition so the hover dot gets the correct color
                         fillcolor: getRgba(cColor, 0.25)
                     });
                     colorIndex++;
@@ -1833,21 +1834,21 @@
                     paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
                     hovermode: 'x', 
                     xaxis: { 
-                        title: null, // IMPROVEMENT 4: Removed x-axis text completely
+                        title: null, // Removed x-axis text completely
                         tickformat: '%H:%M', 
                         showgrid: true,
                         range: [globalMinT, globalMaxT], // Dynamically accommodates the 1-step extensions
                         showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
                     },
                     yaxis: { 
-                        title: { text: 'No. of Bags', standoff: 20 }, // IMPROVEMENT 3: Shifted 5mm left
+                        title: { text: 'No. of Bags', standoff: 20 }, // Shifted 5mm left
                         showgrid: true, 
                         rangemode: 'nonnegative' 
                     },
                     showlegend: true,
                     legend: {
                         orientation: 'h',
-                        x: 0.015, // IMPROVEMENT 3: Shifted ~5mm right from y-axis
+                        x: 0.015, // Shifted ~5mm right from y-axis
                         xanchor: 'left',
                         y: 1.15,
                         yanchor: 'bottom'
