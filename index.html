@@ -504,6 +504,7 @@
 
         const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
         const paletteOverlay = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+        const layoutCommon = { margin: { t: 10, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff' };
 
         document.addEventListener('DOMContentLoaded', () => {
             pristineHTML = document.documentElement.outerHTML;
@@ -559,11 +560,13 @@
         };
         
         const getLocalStartOfDay = (dateString) => {
+            if(!dateString) return new Date();
             const [y, m, d] = dateString.split('-');
             return new Date(y, m - 1, d, 0, 0, 0, 0); 
         };
 
         const getLocalEndOfDay = (dateString) => {
+            if(!dateString) return new Date();
             const [y, m, d] = dateString.split('-');
             return new Date(y, m - 1, d, 23, 59, 59, 999); 
         };
@@ -1665,11 +1668,10 @@
                 diffDays = Math.ceil((eDate - sDate) / 86400000);
             }
 
-            let isArea = isOverlayActive ? true : (interval === '15min' || interval === 'raw' || interval === 'hourly' || (isDaily && diffDays > 10));
-            let isBar = !isArea; 
+            let isArea = true;
             let showDailyLabels = isDaily && diffDays <= 10 && !isOverlayActive;
-            let bagsType = isArea ? 'scatter' : 'bar';
-            let bagsMode = isArea ? 'lines' : undefined; 
+            let bagsType = 'scatter';
+            let bagsMode = 'lines'; 
 
             let xAxisTickFormat; let xAxisDtick; let xAxisTickVals = undefined; let xAxisTickText = undefined;
             let sTime = getLocalStartOfDay(startDateStr).getTime();
@@ -1771,7 +1773,7 @@
             let unifiedKeys = Array.from(allKeysSet).sort((a, b) => a - b);
             
             let xVals = unifiedKeys.map(k => new Date(Number(k)));
-            let yBags = unifiedKeys.map(k => { return (agg[k] ? agg[k].bags : 0) + (isBar ? (simAgg[k] ? simAgg[k].bags : 0) : 0); });
+            let yBags = unifiedKeys.map(k => { return (agg[k] ? agg[k].bags : 0) + (simAgg[k] ? simAgg[k].bags : 0); });
             let yNB = unifiedKeys.map(k => { return (agg[k] ? agg[k].nb : 0) + (simAgg[k] ? simAgg[k].fNB : 0); });
             let yWB = unifiedKeys.map(k => { return (agg[k] ? agg[k].wb : 0) + (simAgg[k] ? simAgg[k].fWB : 0); });
             
@@ -1981,69 +1983,48 @@
                 traces = overlayTraces;
             } else {
                 if (isMultipleReclaims) {
-                    if (isBar) {
-                        chartReclaims.forEach((rc) => {
-                            let rcColor = getReclaimColor(rc);
-                            let yRcBags = unifiedKeys.map(k => { return ((agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0) + ((simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0); });
-                            traces.push({
-                                x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                                mode: bagsMode, name: rc, text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
-                                opacity: 1, marker: { color: getRgba(rcColor, 0.35), line: { color: rcColor, width: 1.5 } }
-                            });
-                        });
-                    } else {
-                        chartReclaims.forEach((rc) => {
-                            let rcColor = getReclaimColor(rc);
-                            let yRcBags = unifiedKeys.map(k => { return (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0; });
-                            traces.push({
-                                x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                                fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.35), mode: bagsMode, name: rc, text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
-                                opacity: 1, marker: { color: rcColor }, line: { width: 2, color: rcColor }
-                            });
-                            
-                            let yEstRc = []; let rcHasSim = false;
-                            for (let i = 0; i < unifiedKeys.length; i++) {
-                                let k = unifiedKeys[i];
-                                let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                                let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
-                                let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
-                                let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
-                                if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
-                                else { yEstRc.push(null); }
-                            }
-                            if (rcHasSim) {
-                                traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
-                            }
-                        });
-                    }
-                } else {
-                    if (isBar) {
-                        traces.push({ 
-                            x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                            mode: bagsMode, name: 'Actual Bags', text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
-                            textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
-                            opacity: 1, marker: { color: getRgba('#3399FF', 0.35), line: { color: '#3399FF', width: 1.5 } }
-                        });
-                    } else {
-                        traces.push({ 
-                            x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                            fill: 'tozeroy', fillcolor: getRgba('#3399FF', 0.4), mode: bagsMode, name: 'Actual Bags', text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
-                            textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
-                            opacity: 1, marker: { color: '#3399FF' }, line: { width: 2, color: '#3399FF' }
+                    chartReclaims.forEach((rc) => {
+                        let rcColor = getReclaimColor(rc);
+                        let yRcBags = unifiedKeys.map(k => { return (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0; });
+                        traces.push({
+                            x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                            fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.35), mode: bagsMode, name: rc, text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                            opacity: 1, marker: { color: rcColor }, line: { width: 2, color: rcColor }
                         });
                         
-                        let yEstSingle = []; let rcHasSim = false;
+                        let yEstRc = []; let rcHasSim = false;
                         for (let i = 0; i < unifiedKeys.length; i++) {
                             let k = unifiedKeys[i];
-                            let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
-                            let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
-                            let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
-
-                            if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
-                            else { yEstSingle.push(null); }
+                            let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                            let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
+                            let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
+                            let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
+                            if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
+                            else { yEstRc.push(null); }
                         }
-                        if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
+                        if (rcHasSim) {
+                            traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
+                        }
+                    });
+                } else {
+                    traces.push({ 
+                        x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                        fill: 'tozeroy', fillcolor: getRgba('#3399FF', 0.4), mode: bagsMode, name: 'Actual Bags', text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                        textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
+                        opacity: 1, marker: { color: '#3399FF' }, line: { width: 2, color: '#3399FF' }
+                    });
+                    
+                    let yEstSingle = []; let rcHasSim = false;
+                    for (let i = 0; i < unifiedKeys.length; i++) {
+                        let k = unifiedKeys[i];
+                        let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
+                        let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
+                        let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
+
+                        if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
+                        else { yEstSingle.push(null); }
                     }
+                    if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
                 }
                 
                 traces.push(
@@ -2187,8 +2168,6 @@
             });
             chartDiv.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
         }
-
-        const layoutCommon = { margin: { t: 10, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff' };
 
         function renderCharts(data) {
             if (data.length === 0 && document.querySelectorAll('.sim-list-item').length === 0) { 
