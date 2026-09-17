@@ -48,6 +48,9 @@
         input[type="time"]::-webkit-datetime-edit-ampm-field {
             display: none;
         }
+
+        /* Prevent text selection while panning the table */
+        .no-select { user-select: none; -webkit-user-select: none; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 pb-12">
@@ -107,7 +110,7 @@
 
     <!-- TIMELINE EXPANDED MODAL -->
     <div id="timeline-expanded-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-[200] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="w-full max-w-7xl max-h-full overflow-hidden flex flex-col bg-transparent">
+        <div class="w-[96vw] max-w-[1600px] max-h-full overflow-hidden flex flex-col bg-transparent">
             <div id="timeline-modal-body" class="flex-1 overflow-y-auto overflow-x-hidden p-2 rounded-xl">
                 <!-- Timeline section will be moved here dynamically -->
             </div>
@@ -287,14 +290,14 @@
                 </div>
                 
                 <!-- ABSOLUTE POSITIONED DATE LABEL -->
-                <div id="timeline-date-range" class="absolute pointer-events-none z-20 font-sans" style="left: 5mm; top: 115mm; font-size: 12px; color: #4b5563;"></div>
+                <div id="timeline-date-range" class="absolute pointer-events-none z-20 font-sans" style="left: 5mm; top: 115mm; font-size: 12px; color: #4b5563; display:none;"></div>
 
                 <div id="chart-timeline" class="timeline-container h-[400px]"></div>
                 <div id="timeline-hover-details" class="text-[0.7rem] font-semibold text-blue-800 text-right min-h-[1.5rem] mt-1 pr-14 transition-opacity truncate whitespace-nowrap">
                     &nbsp;
                 </div>
                 
-                <div id="timelineTableContainer" class="hidden mt-4 overflow-x-auto sim-scroll border border-gray-200 rounded-md">
+                <div id="timelineTableContainer" class="hidden mt-4 overflow-x-auto sim-scroll border border-gray-200 rounded-md cursor-grab no-select active:cursor-grabbing">
                     <!-- Space for future data table entries if needed -->
                 </div>
             </div>
@@ -1447,6 +1450,37 @@
                     XLSX.writeFile(wb, `Reclaim_Details_${rcName}_${dateStr}.xlsx`);
                 });
             }
+
+            // PAN FUNCTION (DRAG TO SCROLL) FOR TIMELINE TABLE
+            const slider = document.getElementById('timelineTableContainer');
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                slider.classList.add('cursor-grabbing');
+                slider.classList.remove('cursor-grab');
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.classList.remove('cursor-grabbing');
+                slider.classList.add('cursor-grab');
+            });
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.classList.remove('cursor-grabbing');
+                slider.classList.add('cursor-grab');
+            });
+            slider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 1.5; // Scroll speed multiplier
+                slider.scrollLeft = scrollLeft - walk;
+            });
         }
 
         function executeDashboardUpdate() {
@@ -1944,7 +1978,7 @@
                 }
             });
 
-            let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-10 p-2 border font-bold text-gray-700">Reclaim</th>';
+            let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Reclaim</th>';
             tableXVals.forEach(dt => {
                 let dStr = "";
                 if (interval === 'daily') {
@@ -1954,15 +1988,19 @@
                     let dTime = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
                     dStr = diffDays > 1 ? `${dDate}<br>${dTime}` : dTime;
                 }
-                tableHTML += `<th class="p-2 border text-center font-semibold text-gray-600 bg-gray-50 min-w-[60px]">${dStr}</th>`;
+                tableHTML += `<th class="p-2 border text-center font-semibold text-gray-600 bg-gray-50 min-w-[55px]">${dStr}</th>`;
             });
-            tableHTML += '</tr></thead><tbody>';
+            tableHTML += '<th class="sticky right-0 bg-gray-100 z-20 p-2 border font-bold text-center text-gray-700 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total</th></tr></thead><tbody>';
 
             let rowReclaims = isMultipleReclaims ? uniqueReclaimsInView : ['Total Bags'];
+            let grandTotal = 0;
+
             rowReclaims.forEach(rc => {
                 let rcColor = rc === 'Total Bags' ? '#3399FF' : getReclaimColor(rc);
                 tableHTML += `<tr><td class="sticky left-0 bg-white z-10 p-2 border font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style="color:${rcColor}">${rc}</td>`;
                 
+                let rowSum = 0;
+
                 tableXVals.forEach((dt, i) => {
                     let k = tableKeys[i];
                     let actual = 0, sim = 0;
@@ -1974,14 +2012,18 @@
                         sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
                     }
                     let total = actual + sim;
+                    rowSum += total;
                     let cellText = total > 0 ? `<span class="font-bold text-gray-800">${total}</span>` : `<span class="text-gray-300">-</span>`;
                     tableHTML += `<td class="p-2 border text-center hover:bg-blue-50 transition-colors">${cellText}</td>`;
                 });
-                tableHTML += `</tr>`;
+                
+                grandTotal += rowSum;
+                let sumText = rowSum > 0 ? `<span class="font-extrabold text-blue-700">${rowSum}</span>` : `<span class="text-gray-300">-</span>`;
+                tableHTML += `<td class="sticky right-0 bg-blue-50/50 z-10 p-2 border text-center shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">${sumText}</td></tr>`;
             });
 
             if (isMultipleReclaims) {
-                tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-10 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
+                tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-20 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
                 tableXVals.forEach((dt, i) => {
                     let k = tableKeys[i];
                     let actual = agg[k] ? agg[k].bags : 0;
@@ -1990,7 +2032,8 @@
                     let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
                     tableHTML += `<td class="p-2 border text-center bg-gray-50">${cellText}</td>`;
                 });
-                tableHTML += `</tr>`;
+                let gText = grandTotal > 0 ? `<span class="font-extrabold text-blue-800">${grandTotal}</span>` : `<span class="text-gray-300">-</span>`;
+                tableHTML += `<td class="sticky right-0 bg-blue-100 z-20 p-2 border text-center shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">${gText}</td></tr>`;
             }
             tableHTML += '</tbody></table>';
             document.getElementById('timelineTableContainer').innerHTML = tableHTML;
