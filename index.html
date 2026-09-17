@@ -26,7 +26,7 @@
     <style>
         .chart-container { height: 350px; width: 100%; }
         /* Smooth height transition for dynamic Data Table injection */
-        .timeline-container { height: 380px; width: 100%; transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1); } 
+        .timeline-container { width: 100%; transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1); } 
         
         /* Ultra-Optimized Table CSS */
         table { border-collapse: collapse; width: 100%; table-layout: auto; }
@@ -40,7 +40,7 @@
         .table-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
         
         /* Scrollbar for Simulator & Outputs */
-        .sim-scroll::-webkit-scrollbar { width: 6px; }
+        .sim-scroll::-webkit-scrollbar { width: 6px; height: 8px; }
         .sim-scroll::-webkit-scrollbar-track { background: #f8fafc; }
         .sim-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
@@ -261,7 +261,7 @@
             <!-- MODIFIED TIMELINE SECTION -->
             <div id="timelineSection" class="bg-white p-4 rounded-lg shadow relative border-t-4 border-indigo-500 transition-all">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700 uppercase tracking-wide text-sm">1. Operational Timeline</h3>
+                    <h3 class="font-bold text-gray-700 tracking-wide text-sm">1. Operational Timeline</h3>
                     <div class="flex items-center space-x-3">
                         <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -294,7 +294,7 @@
                     &nbsp;
                 </div>
                 
-                <div id="timelineTableContainer" class="hidden mt-4 overflow-x-auto sim-scroll">
+                <div id="timelineTableContainer" class="hidden mt-4 overflow-x-auto sim-scroll border border-gray-200 rounded-md">
                     <!-- Space for future data table entries if needed -->
                 </div>
             </div>
@@ -1690,6 +1690,7 @@
                 Plotly.purge('chart-timeline'); 
                 document.getElementById('timeline-date-range').innerHTML = ''; 
                 document.getElementById('timeline-hover-details').innerHTML = '&nbsp;';
+                document.getElementById('timelineTableContainer').innerHTML = '';
                 return; 
             }
 
@@ -1708,11 +1709,10 @@
                 diffDays = Math.ceil((eDate - sDate) / 86400000);
             }
 
-            let isArea = (interval === '15min' || interval === 'raw' || interval === 'hourly' || (isDaily && diffDays > 10));
-            let isBar = !isArea; 
+            let isArea = true;
             let showDailyLabels = isDaily && diffDays <= 10;
-            let bagsType = isArea ? 'scatter' : 'bar';
-            let bagsMode = isArea ? 'lines' : undefined; 
+            let bagsType = 'scatter';
+            let bagsMode = 'lines'; 
 
             let xAxisTickFormat;
             let xAxisDtick;
@@ -1847,7 +1847,7 @@
             let xVals = unifiedKeys.map(k => new Date(Number(k)));
             let yBags = unifiedKeys.map(k => {
                 let actual = agg[k] ? agg[k].bags : 0;
-                let sim = isBar ? (simAgg[k] ? simAgg[k].bags : 0) : 0; 
+                let sim = 0; 
                 return actual + sim;
             });
             let yNB = unifiedKeys.map(k => {
@@ -1931,19 +1931,67 @@
             const isMultipleReclaims = uniqueReclaimsInView.length > 1;
 
             let traces = [];
-            
-            // tableReclaims maps index 0 -> visually top row on yaxis3.
-            let tableReclaims = isMultipleReclaims ? [...uniqueReclaimsInView] : ['Total Bags'];
-            
-            // chartReclaims is reversed so A is added LAST (making it the top physical bar).
             let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
+
+            // --- HTML DATA TABLE GENERATION ---
+            let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-10 p-2 border font-bold text-gray-700">Reclaim</th>';
+            xVals.forEach(dt => {
+                let dStr = "";
+                if (interval === 'daily') {
+                    dStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+                } else {
+                    let dDate = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+                    let dTime = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+                    dStr = diffDays > 1 ? `${dDate}<br>${dTime}` : dTime;
+                }
+                tableHTML += `<th class="p-2 border text-center font-semibold text-gray-600 bg-gray-50 min-w-[60px]">${dStr}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            let rowReclaims = isMultipleReclaims ? uniqueReclaimsInView : ['Total Bags'];
+            rowReclaims.forEach(rc => {
+                let rcColor = rc === 'Total Bags' ? '#3399FF' : getReclaimColor(rc);
+                tableHTML += `<tr><td class="sticky left-0 bg-white z-10 p-2 border font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style="color:${rcColor}">${rc}</td>`;
+                
+                xVals.forEach((dt, i) => {
+                    let k = unifiedKeys[i];
+                    let actual = 0, sim = 0;
+                    if (rc === 'Total Bags') {
+                        actual = agg[k] ? agg[k].bags : 0;
+                        sim = simAgg[k] ? simAgg[k].bags : 0;
+                    } else {
+                        actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                        sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
+                    }
+                    let total = actual + sim;
+                    let cellText = total > 0 ? `<span class="font-bold text-gray-800">${total}</span>` : `<span class="text-gray-300">-</span>`;
+                    tableHTML += `<td class="p-2 border text-center hover:bg-blue-50 transition-colors">${cellText}</td>`;
+                });
+                tableHTML += `</tr>`;
+            });
+
+            if (isMultipleReclaims) {
+                tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-10 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
+                xVals.forEach((dt, i) => {
+                    let k = unifiedKeys[i];
+                    let actual = agg[k] ? agg[k].bags : 0;
+                    let sim = simAgg[k] ? simAgg[k].bags : 0;
+                    let total = actual + sim;
+                    let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
+                    tableHTML += `<td class="p-2 border text-center bg-gray-50">${cellText}</td>`;
+                });
+                tableHTML += `</tr>`;
+            }
+            tableHTML += '</tbody></table>';
+            document.getElementById('timelineTableContainer').innerHTML = tableHTML;
+            // --- END HTML DATA TABLE GENERATION ---
 
             if (isMultipleReclaims) {
                 chartReclaims.forEach((rc) => {
                     let rcColor = getReclaimColor(rc);
                     let yRcBags = unifiedKeys.map(k => {
                         let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                        let sim = isBar ? ((simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0) : 0;
+                        let sim = 0;
                         return actual + sim;
                     });
                     traces.push({
@@ -1953,7 +2001,7 @@
                         text: [], 
                         textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
                         opacity: 1, 
-                        marker: isBar ? { color: getRgba(rcColor, 0.35), line: { color: rcColor, width: 1.5 } } : { color: rcColor }, 
+                        marker: { color: rcColor }, 
                         line: isArea ? { width: 2, color: rcColor } : undefined
                     });
                 });
@@ -1977,29 +2025,6 @@
                         }
                     });
                 }
-
-                if (isBar) {
-                    uniqueReclaimsInView.forEach((rc) => {
-                        let yRcBags = unifiedKeys.map(k => {
-                            let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                            let sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
-                            return actual + sim;
-                        });
-                        let tableYIdx = tableReclaims.indexOf(rc);
-                        traces.push({
-                            x: xVals,
-                            y: Array(xVals.length).fill(tableYIdx),
-                            text: yRcBags.map(v => v > 0 ? `<b>${v}</b>` : '<span style="color:#d1d5db">-</span>'),
-                            mode: 'text',
-                            type: 'scatter',
-                            xaxis: 'x',
-                            yaxis: 'y3',
-                            showlegend: false,
-                            textfont: { size: 11, color: '#374151', family: 'Inter, sans-serif' },
-                            hoverinfo: 'none'
-                        });
-                    });
-                }
             } else {
                 traces.push({ 
                     x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
@@ -2009,7 +2034,7 @@
                     textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
                     textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
                     opacity: 1, 
-                    marker: isBar ? { color: getRgba('#3399FF', 0.35), line: { color: '#3399FF', width: 1.5 } } : { color: '#3399FF' }, 
+                    marker: { color: '#3399FF' }, 
                     line: isArea ? { width: 2, color: '#3399FF' } : undefined
                 });
 
@@ -2025,21 +2050,6 @@
                         else { yEstSingle.push(null); }
                     }
                     if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
-                }
-
-                if (isBar) {
-                    traces.push({
-                        x: xVals,
-                        y: Array(xVals.length).fill(0),
-                        text: yBags.map(v => v > 0 ? `<b>${v}</b>` : '<span style="color:#d1d5db">-</span>'),
-                        mode: 'text',
-                        type: 'scatter',
-                        xaxis: 'x',
-                        yaxis: 'y3',
-                        showlegend: false,
-                        textfont: { size: 11, color: '#374151', family: 'Inter, sans-serif' },
-                        hoverinfo: 'none'
-                    });
                 }
             }
 
@@ -2145,26 +2155,9 @@
             let minDate = new Date(Math.min(...xVals)); let maxDate = new Date(Math.max(...xVals));
             let minStr = formatCustomDate(minDate).split('&nbsp;')[0]; let maxStr = formatCustomDate(maxDate).split('&nbsp;')[0];
 
-            let rowHeight = 32; 
-            let tablePixels = isBar ? tableReclaims.length * rowHeight : 0;
-            let xAxisLabelPixels = isBar ? 45 : 0; 
-            
-            let baseChartHeight = 250; 
-            let topChartHeight = 65; 
-            let topGap = 15; 
-            let marginsHeight = 10 + (isBar ? 10 : 60); 
-
-            let totalHeight = baseChartHeight + topChartHeight + topGap + tablePixels + xAxisLabelPixels + marginsHeight;
-            chartDiv.style.height = totalHeight + 'px';
-
-            let plotHeight = totalHeight - marginsHeight;
-            let tableDomainH = isBar ? (tablePixels / plotHeight) : 0;
-            let xAxisDomainH = isBar ? (xAxisLabelPixels / plotHeight) : 0;
-            let topDomainH = topChartHeight / plotHeight;
-            let gapDomainH = topGap / plotHeight;
-
-            let yDomainTable = [0, tableDomainH];
-            let yDomainBags = isBar ? [tableDomainH + xAxisDomainH, 1 - topDomainH - gapDomainH] : [0, 1 - topDomainH - gapDomainH];
+            let topDomainH = 65 / 400;
+            let gapDomainH = 15 / 400;
+            let yDomainBags = [0, 1 - topDomainH - gapDomainH];
             let yDomainAircraft = [1 - topDomainH, 1];
 
             let xRangeStart = sTime;
@@ -2172,18 +2165,12 @@
             let stepVal = xAxisDtick || 86400000;
 
             let dateLabelEl = document.getElementById('timeline-date-range');
-            if (isBar) {
-                dateLabelEl.style.display = 'none';
-            } else {
-                dateLabelEl.style.display = 'block';
-                dateLabelEl.innerHTML = `<b>Date:</b> ${minStr === maxStr ? minStr : minStr + ' - ' + maxStr}`;
-            }
+            dateLabelEl.style.display = 'block';
+            dateLabelEl.innerHTML = `<b>Date:</b> ${minStr === maxStr ? minStr : minStr + ' - ' + maxStr}`;
 
             let layoutArgs = {
-                height: totalHeight,
-                margin: { t: 10, l: 120, r: 60, b: isBar ? 10 : 60 },
+                margin: { t: 10, l: 60, r: 60, b: 60 },
                 font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                barmode: isBar ? 'stack' : 'group',
                 hovermode: 'x', 
                 shapes: [],
                 xaxis: { 
@@ -2205,51 +2192,8 @@
                     domain: yDomainAircraft, 
                     rangemode: 'nonnegative' 
                 },
-                showlegend: true, legend: { orientation: 'h', y: 1 + (30 / plotHeight) }
+                showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) }
             };
-
-            if (isBar) {
-                layoutArgs.yaxis3 = {
-                    domain: yDomainTable,
-                    range: [tableReclaims.length - 0.5, -0.5], 
-                    showgrid: false,
-                    zeroline: false,
-                    showline: false,
-                    tickmode: 'array',
-                    tickvals: tableReclaims.map((_, i) => i),
-                    ticktext: tableReclaims.map(rc => {
-                        let rcColor = rc === 'Total Bags' ? '#3399FF' : getReclaimColor(rc);
-                        return `<span style="font-size:11px;font-weight:700;color:${rcColor}">${rc}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>`;
-                    }),
-                    fixedrange: true,
-                    ticks: '',
-                    tickpad: 0 
-                };
-
-                tableReclaims.forEach((rc, i) => {
-                    layoutArgs.shapes.push({
-                        type: 'rect', xref: 'paper', yref: 'y3', x0: 0, x1: 1, y0: i - 0.5, y1: i + 0.5,
-                        fillcolor: i % 2 === 0 ? '#ffffff' : '#f9fafb', line: { color: '#e5e7eb', width: 1 }, layer: 'below'
-                    });
-                });
-
-                let gridTimes = [];
-                for (let t = sTime; t <= eTimeStart; t += stepVal) { gridTimes.push(t); }
-
-                gridTimes.forEach(t => {
-                    layoutArgs.shapes.push({
-                        type: 'line', xref: 'x', yref: 'y3', x0: t - (stepVal/2), x1: t - (stepVal/2), y0: -0.5, y1: tableReclaims.length - 0.5,
-                        line: { color: '#e5e7eb', width: 1 }, layer: 'above'
-                    });
-                });
-                
-                if (gridTimes.length > 0) {
-                    layoutArgs.shapes.push({
-                        type: 'line', xref: 'x', yref: 'y3', x0: gridTimes[gridTimes.length-1] + (stepVal/2), x1: gridTimes[gridTimes.length-1] + (stepVal/2), y0: -0.5, y1: tableReclaims.length - 0.5,
-                        line: { color: '#e5e7eb', width: 1 }, layer: 'above'
-                    });
-                }
-            }
 
             Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
 
