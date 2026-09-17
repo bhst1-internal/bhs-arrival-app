@@ -1758,11 +1758,14 @@
                 let traces = [];
                 let datesMap = {};
                 const interval = document.getElementById('slicer-interval').value;
+                const paletteLocal = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
                 
                 // Group data exclusively by Date and project time to a fixed 1-day axis
                 data.forEach(d => {
                     let dt = new Date(d.ATA.getTime());
-                    let dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+                    
+                    // IMPROVEMENT 5: Change the date format from "yyyy-mm-dd" to "dd/mm"
+                    let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
                     
                     // Standardize all times to a fixed date (Jan 1, 2000) for the overlay effect
                     let timeNorm = new Date(2000, 0, 1, dt.getHours(), dt.getMinutes(), 0, 0);
@@ -1781,14 +1784,26 @@
                 // Ensure consistent 0-fill timeline intervals to avoid visual area chart gaps
                 let standardTimes = [];
                 let step = interval === '15min' ? 900000 : 3600000; // Default to hourly intervals if raw/daily
-                for(let t = new Date(2000, 0, 1, 0, 0, 0).getTime(); t <= new Date(2000, 0, 1, 23, 59, 59).getTime(); t += step) {
+                
+                // IMPROVEMENT 1: Create a closed loop explicitly extending from 00:00:00 to exactly 24:00:00
+                let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
+                let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); // 24:00 of the same fixed day
+                
+                for(let t = startT; t <= endT; t += step) {
                     standardTimes.push(t);
                 }
                 
+                let colorIndex = 0;
                 // Generate Area Chart trace for each individual date
                 for (let dateStr in datesMap) {
                     let yVals = standardTimes.map(t => datesMap[dateStr][t] || 0);
                     let xVals = standardTimes.map(t => new Date(t));
+                    
+                    // Anchor ends explicitly to 0 if data isn't present to secure the closed loop visually
+                    yVals[0] = datesMap[dateStr][startT] || 0;
+                    yVals[yVals.length - 1] = datesMap[dateStr][endT] || 0;
+
+                    let cColor = paletteLocal[colorIndex % paletteLocal.length];
                     
                     traces.push({
                         x: xVals,
@@ -1797,27 +1812,39 @@
                         mode: 'lines',
                         fill: 'tozeroy',
                         name: dateStr,
-                        opacity: 0.5,
-                        line: { shape: 'spline', smoothing: 0.8 }
+                        hoverinfo: 'none', // Required to disable defaults and enable custom tooltip styling
+                        opacity: 0.7,
+                        line: { shape: 'linear', width: 2, color: cColor }, // IMPROVEMENT 2: Straight line area chart (removed 'spline')
+                        fillcolor: getRgba(cColor, 0.25)
                     });
+                    colorIndex++;
                 }
                 
                 let layoutArgs = {
-                    margin: { t: 10, l: 60, r: 60, b: 60 },
+                    margin: { t: 40, l: 60, r: 60, b: 40 }, // Expanded top margin slightly to accommodate legend placement
                     font: { family: 'Inter, sans-serif' },
                     paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                    hovermode: 'x unified', // Shows tooltip comparison across all overlaid dates
+                    hovermode: 'x', 
                     xaxis: { 
                         title: 'Time of Day (1-Day Overlay View)', 
                         tickformat: '%H:%M', 
-                        showgrid: true 
+                        showgrid: true,
+                        range: [startT, endT] // Strictly bounds axis endpoints
                     },
                     yaxis: { 
                         title: 'No. of Bags', 
                         showgrid: true, 
                         rangemode: 'nonnegative' 
                     },
-                    showlegend: true
+                    showlegend: true,
+                    // IMPROVEMENT 4: Legend dynamically positioned above the chart area, aligned to the left
+                    legend: {
+                        orientation: 'h',
+                        x: 0,
+                        xanchor: 'left',
+                        y: 1.15,
+                        yanchor: 'bottom'
+                    }
                 };
                 
                 Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
@@ -1825,7 +1852,81 @@
                 // Hide standard features irrelevant to Overlay Mode
                 document.getElementById('timelineTableContainer').style.display = 'none'; 
                 document.getElementById('timeline-date-range').style.display = 'none';
-                return; // Halt here to bypass standard timeline rendering
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
+
+                // IMPROVEMENT 3: Apply the KPI custom Tooltip style/design specifically to Overlay Mode
+                let chartDivOverlay = document.getElementById('chart-timeline');
+                
+                if (!document.getElementById('overlay-custom-tooltip')) {
+                    let tooltip = document.createElement('div');
+                    tooltip.id = 'overlay-custom-tooltip';
+                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100 transform -translate-x-1/2 -translate-y-full mt-[-15px]';
+                    tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
+                }
+
+                if (chartDivOverlay.removeAllListeners) {
+                    chartDivOverlay.removeAllListeners('plotly_hover');
+                    chartDivOverlay.removeAllListeners('plotly_unhover');
+                }
+
+                // Generates the dark-mode hover box following the style layout utilized in the KPI total tooltips
+                chartDivOverlay.on('plotly_hover', function(dataEvent) {
+                    if (!isOverlayMode) return;
+                    let xVal = dataEvent.points[0].x; 
+                    let t = new Date(xVal);
+                    let timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                    
+                    let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
+                    
+                    // Sort descending by value to show the highest bag volumes on top
+                    let pts = dataEvent.points.slice().sort((a,b) => b.y - a.y);
+                    
+                    pts.forEach(pt => {
+                        let dateName = pt.data.name;
+                        let val = pt.y;
+                        let color = pt.fullData.line.color;
+                        if (val > 0) { 
+                            html += `<div class="mb-1"><span style="color:${color}; font-size:1.2em; vertical-align:middle;">■</span> <span class="text-gray-400">${dateName}:</span> <span class="font-bold text-white ml-1">${val} bags</span></div>`;
+                        }
+                    });
+
+                    // Fallback visual if querying an area hitting the axis boundaries simultaneously at 0
+                    if (pts.every(pt => pt.y === 0)) {
+                        html += `<div class="text-gray-500 italic">No Bags Overlay</div>`;
+                    }
+                    
+                    document.getElementById('overlay-tooltip-content').innerHTML = html;
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    let evt = dataEvent.event;
+                    tooltip.style.left = evt.pageX + 'px';
+                    tooltip.style.top = (evt.pageY - 15) + 'px';
+                    tooltip.style.opacity = '1';
+                });
+
+                chartDivOverlay.on('plotly_unhover', function() { 
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    if(tooltip) tooltip.style.opacity = '0'; 
+                });
+
+                if (!chartDivOverlay._overlayMouseAttached) {
+                    chartDivOverlay.addEventListener('mousemove', (evt) => { 
+                        if (!isOverlayMode) return;
+                        let tooltip = document.getElementById('overlay-custom-tooltip'); 
+                        if(tooltip && tooltip.style.opacity === '1') { 
+                            tooltip.style.left = evt.pageX + 'px'; 
+                            tooltip.style.top = (evt.pageY - 15) + 'px'; 
+                        } 
+                    });
+                    chartDivOverlay._overlayMouseAttached = true;
+                }
+
+                return; // Exits routine immediately so it bypasses standard non-overlay timeline rendering
+            } else {
+                // Restoration contingency when toggling overlay off ensures standard text reverts visually
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
             }
             // --- END OVERLAY MODE LOGIC ---
 
