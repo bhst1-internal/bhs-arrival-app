@@ -1934,8 +1934,18 @@
             let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
 
             // --- HTML DATA TABLE GENERATION ---
+            let tableXVals = [];
+            let tableKeys = [];
+            xVals.forEach((dt, i) => {
+                let t = dt.getTime();
+                if (t >= sTime && t <= eTime) {
+                    tableXVals.push(dt);
+                    tableKeys.push(unifiedKeys[i]);
+                }
+            });
+
             let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-10 p-2 border font-bold text-gray-700">Reclaim</th>';
-            xVals.forEach(dt => {
+            tableXVals.forEach(dt => {
                 let dStr = "";
                 if (interval === 'daily') {
                     dStr = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
@@ -1953,8 +1963,8 @@
                 let rcColor = rc === 'Total Bags' ? '#3399FF' : getReclaimColor(rc);
                 tableHTML += `<tr><td class="sticky left-0 bg-white z-10 p-2 border font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" style="color:${rcColor}">${rc}</td>`;
                 
-                xVals.forEach((dt, i) => {
-                    let k = unifiedKeys[i];
+                tableXVals.forEach((dt, i) => {
+                    let k = tableKeys[i];
                     let actual = 0, sim = 0;
                     if (rc === 'Total Bags') {
                         actual = agg[k] ? agg[k].bags : 0;
@@ -1972,8 +1982,8 @@
 
             if (isMultipleReclaims) {
                 tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-10 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
-                xVals.forEach((dt, i) => {
-                    let k = unifiedKeys[i];
+                tableXVals.forEach((dt, i) => {
+                    let k = tableKeys[i];
                     let actual = agg[k] ? agg[k].bags : 0;
                     let sim = simAgg[k] ? simAgg[k].bags : 0;
                     let total = actual + sim;
@@ -2152,9 +2162,6 @@
             document.getElementById('out-avg-transit').innerText = `Transit: ${avgTransitMinStr}`;
             document.getElementById('out-overlap-flights-list').innerHTML = overlapFlightsHTML;
 
-            let minDate = new Date(Math.min(...xVals)); let maxDate = new Date(Math.max(...xVals));
-            let minStr = formatCustomDate(minDate).split('&nbsp;')[0]; let maxStr = formatCustomDate(maxDate).split('&nbsp;')[0];
-
             let topDomainH = 65 / 400;
             let gapDomainH = 15 / 400;
             let yDomainBags = [0, 1 - topDomainH - gapDomainH];
@@ -2165,8 +2172,8 @@
             let stepVal = xAxisDtick || 86400000;
 
             let dateLabelEl = document.getElementById('timeline-date-range');
-            dateLabelEl.style.display = 'block';
-            dateLabelEl.innerHTML = `<b>Date:</b> ${minStr === maxStr ? minStr : minStr + ' - ' + maxStr}`;
+            dateLabelEl.style.display = 'none';
+            dateLabelEl.innerHTML = '';
 
             let layoutArgs = {
                 margin: { t: 10, l: 60, r: 60, b: 60 },
