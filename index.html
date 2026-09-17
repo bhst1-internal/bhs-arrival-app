@@ -1785,17 +1785,23 @@
                 let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
                 let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); // 24:00 of the same fixed day
                 
+                let globalMinT = startT;
+                let globalMaxT = endT;
                 let colorIndex = 0;
+
                 // Generate Area Chart trace for each individual date
                 for (let dateStr in datesMap) {
-                    // IMPROVEMENT 2: Find bounds of actual data to close the loop smoothly 1 step before/after
                     let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
                     if(actualTimes.length === 0) continue;
                     
-                    // Anchor exactly 1 step before the first point and 1 step after the last point
-                    let minT = Math.max(startT, Math.min(...actualTimes) - step); 
-                    let maxT = Math.min(endT, Math.max(...actualTimes) + step);   
+                    // IMPROVEMENT 2: Anchor exactly 1 step before the first point and 1 step after the last point to prevent floating
+                    let minT = Math.min(...actualTimes) - step; 
+                    let maxT = Math.max(...actualTimes) + step;   
                     
+                    // Expand the global axis range if the data extends into the previous/next day visually
+                    if (minT < globalMinT) globalMinT = minT;
+                    if (maxT > globalMaxT) globalMaxT = maxT;
+
                     let xVals = [];
                     let yVals = [];
                     
@@ -1827,11 +1833,11 @@
                     paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
                     hovermode: 'x', 
                     xaxis: { 
-                        title: '', // IMPROVEMENT 4: Removed x-axis text
+                        title: null, // IMPROVEMENT 4: Removed x-axis text completely
                         tickformat: '%H:%M', 
                         showgrid: true,
-                        range: [startT, endT],
-                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 // IMPROVEMENT 1: Vertical line added
+                        range: [globalMinT, globalMaxT], // Dynamically accommodates the 1-step extensions
+                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
                     },
                     yaxis: { 
                         title: { text: 'No. of Bags', standoff: 20 }, // IMPROVEMENT 3: Shifted 5mm left
@@ -1862,7 +1868,6 @@
                 if (!document.getElementById('overlay-custom-tooltip')) {
                     let tooltip = document.createElement('div');
                     tooltip.id = 'overlay-custom-tooltip';
-                    // Removed the hard-coded CSS transform string here because we'll assign it dynamically in JS below
                     tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
                     tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
                     document.body.appendChild(tooltip);
@@ -1875,9 +1880,19 @@
 
                 chartDivOverlay.on('plotly_hover', function(dataEvent) {
                     if (!isOverlayMode) return;
+                    
                     let xVal = dataEvent.points[0].x; 
-                    let t = new Date(xVal);
-                    let timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                    let timeStr = "00:00";
+                    
+                    // FIXED: Timezone extraction issue. We read the literal string format from Plotly 
+                    // (e.g. "2000-01-01 23:00") rather than allowing the Date object to offset into local time
+                    if (typeof xVal === 'string') {
+                        let match = xVal.match(/(\d{2}:\d{2})/);
+                        if (match) timeStr = match[1];
+                    } else {
+                        let t = new Date(xVal);
+                        timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                    }
                     
                     let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
                     
@@ -1900,7 +1915,6 @@
                     let tooltip = document.getElementById('overlay-custom-tooltip');
                     let evt = dataEvent.event;
                     
-                    // IMPROVEMENT 1: Center above the cursor
                     tooltip.style.left = evt.pageX + 'px';
                     tooltip.style.top = (evt.pageY - 20) + 'px';
                     tooltip.style.transform = 'translate(-50%, -100%)';
