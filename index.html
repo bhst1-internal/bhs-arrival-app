@@ -264,8 +264,15 @@
             <!-- MODIFIED TIMELINE SECTION -->
             <div id="timelineSection" class="bg-white p-4 rounded-lg shadow relative border-t-4 border-indigo-500 transition-all">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700 tracking-wide text-sm">1. Operational Timeline</h3>
+                    <h3 class="font-bold text-gray-700 text-sm">1. Operational Timeline</h3>
                     <div class="flex items-center space-x-3">
+                        <button id="overlayBtn" onclick="toggleOverlay()" title="Overlay Dates" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Overlay
+                        </button>
+
                         <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -495,6 +502,26 @@
 
         // --- TIMELINE DATA TABLE & CONTROLS LOGIC ---
         let isTimelineTableExpanded = false;
+        window.isTimelineOverlayActive = false;
+
+        function toggleOverlay() {
+            window.isTimelineOverlayActive = !window.isTimelineOverlayActive;
+            const btn = document.getElementById('overlayBtn');
+            const slicer = document.getElementById('slicer-interval');
+            
+            if (window.isTimelineOverlayActive) {
+                btn.style.background = '#e0e7ff';
+                btn.style.borderColor = '#6366f1';
+                btn.style.color = '#4338ca';
+                // Force to hourly if daily was selected since overlaying days needs an intraday scale
+                if(slicer.value === 'daily') slicer.value = 'hourly';
+            } else {
+                btn.style.background = '#ffffff';
+                btn.style.borderColor = '#d1d5db';
+                btn.style.color = '#4b5563';
+            }
+            updateDashboardWithLoader();
+        }
 
         function toggleDataTable() {
             const section = document.getElementById('timelineSection');
@@ -1716,7 +1743,7 @@
 
         function renderTimeline(data) {
             let chartDiv = document.getElementById('chart-timeline');
-            if (data.length === 0) { 
+            if (data.length === 0 && document.querySelectorAll('.sim-list-item').length === 0) { 
                 if (chartDiv.removeAllListeners) { 
                     chartDiv.removeAllListeners('plotly_hover'); 
                     chartDiv.removeAllListeners('plotly_unhover'); 
@@ -1735,7 +1762,8 @@
 
             const startDateStr = document.getElementById('filter-start-date').value;
             const endDateStr = document.getElementById('filter-end-date').value;
-            
+            let isOverlayActive = window.isTimelineOverlayActive === true;
+
             let diffDays = 1;
             if (startDateStr && endDateStr) {
                 let sDate = getLocalStartOfDay(startDateStr);
@@ -1743,10 +1771,11 @@
                 diffDays = Math.ceil((eDate - sDate) / 86400000);
             }
 
-            let isArea = true;
-            let showDailyLabels = isDaily && diffDays <= 10;
-            let bagsType = 'scatter';
-            let bagsMode = 'lines'; 
+            let isArea = isOverlayActive ? true : (interval === '15min' || interval === 'raw' || interval === 'hourly' || (isDaily && diffDays > 10));
+            let isBar = !isArea; 
+            let showDailyLabels = isDaily && diffDays <= 10 && !isOverlayActive;
+            let bagsType = isArea ? 'scatter' : 'bar';
+            let bagsMode = isArea ? 'lines' : undefined; 
 
             let xAxisTickFormat;
             let xAxisDtick;
@@ -1881,7 +1910,7 @@
             let xVals = unifiedKeys.map(k => new Date(Number(k)));
             let yBags = unifiedKeys.map(k => {
                 let actual = agg[k] ? agg[k].bags : 0;
-                let sim = 0; 
+                let sim = isBar ? (simAgg[k] ? simAgg[k].bags : 0) : 0; 
                 return actual + sim;
             });
             let yNB = unifiedKeys.map(k => {
@@ -2039,83 +2068,191 @@
             document.getElementById('timelineTableContainer').innerHTML = tableHTML;
             // --- END HTML DATA TABLE GENERATION ---
 
-            if (isMultipleReclaims) {
-                chartReclaims.forEach((rc) => {
-                    let rcColor = getReclaimColor(rc);
-                    let yRcBags = unifiedKeys.map(k => {
-                        let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                        let sim = 0;
-                        return actual + sim;
-                    });
-                    traces.push({
-                        x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                        fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba(rcColor, 0.35) : undefined,
-                        mode: bagsMode, name: rc, 
-                        text: [], 
-                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
-                        opacity: 1, 
-                        marker: { color: rcColor }, 
-                        line: isArea ? { width: 2, color: rcColor } : undefined
-                    });
-                });
+            // --- BUILD TRACES ---
+            let paletteOverlay = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
 
-                if (isArea) {
-                    chartReclaims.forEach((rc) => {
-                        let yEstRc = []; let rcHasSim = false;
+            if (isOverlayActive) {
+                let overlayTraces = [];
+                let baseStart = new Date(2000, 0, 1, 0, 0, 0).getTime();
+                let activeInterval = interval === 'daily' ? 'hourly' : interval;
+                let stepO = (activeInterval === '15min' || activeInterval === 'raw') ? 900000 : 3600000;
+                let oxVals = [];
+                for (let t = baseStart; t <= baseStart + 86400000; t += stepO) { 
+                    oxVals.push(new Date(t)); 
+                }
+
+                let daysInRange = [...new Set(window.currentFilteredData.map(d => formatDateForInput(d.ATA)))].sort();
+                if(daysInRange.length === 0 && simBlocks.length > 0) daysInRange = [startDateStr];
+
+                if (isMultipleReclaims) {
+                    uniqueReclaimsInView.forEach(rc => {
+                        let rcColor = getReclaimColor(rc);
+                        daysInRange.forEach((dStr, idx) => {
+                            let yVals = oxVals.map(ox => {
+                                let hr = ox.getHours(); let min = ox.getMinutes();
+                                let matchK = unifiedKeys.find(k => {
+                                    let dt = new Date(Number(k));
+                                    return formatDateForInput(dt) === dStr && dt.getHours() === hr && dt.getMinutes() === min;
+                                });
+                                return (matchK && agg[matchK] && agg[matchK].reclaims[rc]) ? agg[matchK].reclaims[rc] : 0;
+                            });
+                            
+                            if (yVals.some(v => v > 0)) {
+                                let dash = idx % 2 === 0 ? 'solid' : 'dash';
+                                overlayTraces.push({
+                                    x: oxVals, y: yVals, type: 'scatter', mode: 'lines', fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.15),
+                                    name: `${rc} (${dStr.substring(5)})`, line: { color: rcColor, dash: dash, width: 2 },
+                                    hovertemplate: `<b>${dStr} | ${rc}</b><br>Time: %{x|%H:%M}<br>Bags: %{y}<extra></extra>`
+                                });
+                            }
+                        });
+                        
+                        let sVals = oxVals.map(ox => {
+                            let hr = ox.getHours(); let min = ox.getMinutes();
+                            let matchK = Object.keys(simAgg).map(Number).find(k => {
+                                let dt = new Date(k); return dt.getHours() === hr && dt.getMinutes() === min;
+                            });
+                            return (matchK && simAgg[matchK] && simAgg[matchK].reclaims[rc]) ? simAgg[matchK].reclaims[rc] : 0;
+                        });
+                        if (sVals.some(v=>v>0)) {
+                            overlayTraces.push({
+                                x: oxVals, y: sVals, type: 'scatter', mode: 'lines+markers', name: `Sim ${rc}`,
+                                line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { size: 6 },
+                                hovertemplate: `<b>Sim | ${rc}</b><br>Time: %{x|%H:%M}<br>Bags: %{y}<extra></extra>`
+                            });
+                        }
+                    });
+                } else {
+                    daysInRange.forEach((dStr, idx) => {
+                        let c = paletteOverlay[idx % paletteOverlay.length];
+                        let yVals = oxVals.map(ox => {
+                            let hr = ox.getHours(); let min = ox.getMinutes();
+                            let matchK = unifiedKeys.find(k => {
+                                let dt = new Date(Number(k));
+                                return formatDateForInput(dt) === dStr && dt.getHours() === hr && dt.getMinutes() === min;
+                            });
+                            return (matchK && agg[matchK]) ? agg[matchK].bags : 0;
+                        });
+                        
+                        if (yVals.some(v => v > 0)) {
+                            overlayTraces.push({
+                                x: oxVals, y: yVals, type: 'scatter', mode: 'lines', fill: 'tozeroy', fillcolor: getRgba(c, 0.2),
+                                name: dStr, line: { color: c, width: 2 },
+                                hovertemplate: `<b>${dStr}</b><br>Time: %{x|%H:%M}<br>Bags: %{y}<extra></extra>`
+                            });
+                        }
+                    });
+                    
+                    let sVals = oxVals.map(ox => {
+                        let hr = ox.getHours(); let min = ox.getMinutes();
+                        let matchK = Object.keys(simAgg).map(Number).find(k => {
+                            let dt = new Date(k); return dt.getHours() === hr && dt.getMinutes() === min;
+                        });
+                        return (matchK && simAgg[matchK]) ? simAgg[matchK].bags : 0;
+                    });
+                    if (sVals.some(v=>v>0)) {
+                        overlayTraces.push({
+                            x: oxVals, y: sVals, type: 'scatter', mode: 'lines+markers', name: `Sim Total`,
+                            line: { color: '#ef4444', width: 2.5, dash: 'dot' }, marker: { size: 6 },
+                            hovertemplate: `<b>Sim Total</b><br>Time: %{x|%H:%M}<br>Bags: %{y}<extra></extra>`
+                        });
+                    }
+                }
+                traces = overlayTraces;
+            } else {
+                if (isMultipleReclaims) {
+                    if (isBar) {
+                        chartReclaims.forEach((rc) => {
+                            let rcColor = getReclaimColor(rc);
+                            let yRcBags = unifiedKeys.map(k => {
+                                let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                                let sim = (simAgg[k] && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
+                                return actual + sim;
+                            });
+                            traces.push({
+                                x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                                mode: bagsMode, name: rc, 
+                                text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                                opacity: 1, 
+                                marker: { color: getRgba(rcColor, 0.35), line: { color: rcColor, width: 1.5 } }
+                            });
+                        });
+                    } else {
+                        chartReclaims.forEach((rc) => {
+                            let rcColor = getReclaimColor(rc);
+                            let yRcBags = unifiedKeys.map(k => {
+                                let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                                return actual;
+                            });
+                            traces.push({
+                                x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                                fill: 'tozeroy', fillcolor: getRgba(rcColor, 0.35), mode: bagsMode, name: rc, 
+                                text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                                opacity: 1, marker: { color: rcColor }, line: { width: 2, color: rcColor }
+                            });
+                            
+                            let yEstRc = []; let rcHasSim = false;
+                            for (let i = 0; i < unifiedKeys.length; i++) {
+                                let k = unifiedKeys[i];
+                                let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                                let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
+                                let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
+                                let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
+
+                                if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
+                                else { yEstRc.push(null); }
+                            }
+                            if (rcHasSim) {
+                                traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
+                            }
+                        });
+                    }
+                } else {
+                    if (isBar) {
+                        traces.push({ 
+                            x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                            mode: bagsMode, name: 'Actual Bags', 
+                            text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                            textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
+                            opacity: 1, marker: { color: getRgba('#3399FF', 0.35), line: { color: '#3399FF', width: 1.5 } }
+                        });
+                    } else {
+                        traces.push({ 
+                            x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                            fill: 'tozeroy', fillcolor: getRgba('#3399FF', 0.4), mode: bagsMode, name: 'Actual Bags', 
+                            text: [], textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                            textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
+                            opacity: 1, marker: { color: '#3399FF' }, line: { width: 2, color: '#3399FF' }
+                        });
+                        
+                        let yEstSingle = []; let rcHasSim = false;
                         for (let i = 0; i < unifiedKeys.length; i++) {
                             let k = unifiedKeys[i];
-                            let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                            let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
-                            let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
-                            let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
+                            let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
+                            let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
+                            let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
 
-                            if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
-                            else { yEstRc.push(null); }
+                            if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
+                            else { yEstSingle.push(null); }
                         }
-                        if (rcHasSim) {
-                            let rcColor = getReclaimColor(rc);
-                            traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
-                        }
-                    });
-                }
-            } else {
-                traces.push({ 
-                    x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                    fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba('#3399FF', 0.4) : undefined, 
-                    mode: bagsMode, name: 'Actual Bags', 
-                    text: [], 
-                    textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
-                    textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
-                    opacity: 1, 
-                    marker: { color: '#3399FF' }, 
-                    line: isArea ? { width: 2, color: '#3399FF' } : undefined
-                });
-
-                if (isArea) {
-                    let yEstSingle = []; let rcHasSim = false;
-                    for (let i = 0; i < unifiedKeys.length; i++) {
-                        let k = unifiedKeys[i];
-                        let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
-                        let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
-                        let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
-
-                        if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
-                        else { yEstSingle.push(null); }
+                        if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
                     }
-                    if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
                 }
             }
 
-            traces.push(
-                { x: xVals, y: yNB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total NB', 
-                  text: showDailyLabels ? yNB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
-                  marker: { symbol: 'square', size: yNB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#10b981' }, 
-                  textfont: { size: 11, weight: 'bold' }, line: { color: '#10b981', dash: 'solid', width: 2 } },
-                { x: xVals, y: yWB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total WB', 
-                  text: showDailyLabels ? yWB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
-                  marker: { symbol: 'square', size: yWB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#f59e0b' }, 
-                  textfont: { size: 11, weight: 'bold' }, line: { color: '#f59e0b', dash: 'solid', width: 2 } }
-            );
+            // AIRCRAFT COUNTS (Not overlaid to keep it clean)
+            if (!isOverlayActive) {
+                traces.push(
+                    { x: xVals, y: yNB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total NB', 
+                    text: showDailyLabels ? yNB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
+                    marker: { symbol: 'square', size: yNB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#10b981' }, 
+                    textfont: { size: 11, weight: 'bold' }, line: { color: '#10b981', dash: 'solid', width: 2 } },
+                    { x: xVals, y: yWB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total WB', 
+                    text: showDailyLabels ? yWB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
+                    marker: { symbol: 'square', size: yWB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#f59e0b' }, 
+                    textfont: { size: 11, weight: 'bold' }, line: { color: '#f59e0b', dash: 'solid', width: 2 } }
+                );
+            }
 
             let maxCombinedBags = 0; let peakKey = null;
 
@@ -2210,14 +2347,6 @@
             let yDomainBags = [0, 1 - topDomainH - gapDomainH];
             let yDomainAircraft = [1 - topDomainH, 1];
 
-            let xRangeStart = sTime;
-            let xRangeEnd = isDaily ? eTimeStart : eTime;
-            let stepVal = xAxisDtick || 86400000;
-
-            let dateLabelEl = document.getElementById('timeline-date-range');
-            dateLabelEl.style.display = 'none';
-            dateLabelEl.innerHTML = '';
-
             let layoutArgs = {
                 margin: { t: 10, l: 60, r: 60, b: 60 },
                 font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
@@ -2226,7 +2355,7 @@
                 xaxis: { 
                     title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, 
                     tickvals: xAxisTickVals, ticktext: xAxisTickText,
-                    range: [xRangeStart - (stepVal/2), xRangeEnd + (stepVal/2)],
+                    range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)],
                     hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M',
                     showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1,
                     anchor: 'y', 
@@ -2245,6 +2374,18 @@
                 showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) }
             };
 
+            if (isOverlayActive) {
+                let baseStart = new Date(2000, 0, 1, 0, 0, 0).getTime();
+                let activeInterval = interval === 'daily' ? 'hourly' : interval;
+                let stepO = (activeInterval === '15min' || activeInterval === 'raw') ? 900000 : 3600000;
+                layoutArgs.xaxis.tickformat = '%H:%M';
+                layoutArgs.xaxis.dtick = stepO;
+                layoutArgs.xaxis.range = [baseStart - (stepO/2), baseStart + 86400000 + (stepO/2)];
+                layoutArgs.xaxis.hoverformat = '%H:%M';
+                // Hide aircraft axis for overlay
+                layoutArgs.yaxis2.visible = false;
+            }
+
             Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
 
             if (chartDiv.removeAllListeners) {
@@ -2253,9 +2394,11 @@
             }
             
             chartDiv.on('plotly_hover', function(data) {
-                if (data.points.length > 0) {
+                if (data.points.length > 0 && !isOverlayActive) {
                     let pt = data.points.find(p => p.customdata !== undefined); 
                     if (pt && pt.customdata) document.getElementById('timeline-hover-details').innerHTML = pt.customdata;
+                } else {
+                    document.getElementById('timeline-hover-details').innerHTML = '&nbsp;';
                 }
             });
             chartDiv.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
