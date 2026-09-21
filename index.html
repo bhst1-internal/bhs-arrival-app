@@ -282,7 +282,7 @@
                             JPEG
                         </button>
                         
-                        <button id="ataModeBtn" onclick="toggleATAMode()" title="Toggle ATA Punctuality View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
+                        <button id="ataModeBtn" onclick="toggleATAMode()" title="Toggle ATA Punctuality View" style="display:none;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
                             ATA
                         </button>
 
@@ -560,6 +560,7 @@
             const btn = document.getElementById('dataTableBtn');
             const tableContainer = document.getElementById('timelineTableContainer');
             const chartDiv = document.getElementById('chart-timeline');
+            const ataBtn = document.getElementById('ataModeBtn');
 
             if (!isTimelineTableExpanded) {
                 // Expand: Move to Modal
@@ -583,7 +584,8 @@
                 chartDiv.classList.remove('h-[400px]');
                 chartDiv.classList.add('h-[450px]');
 
-                tableContainer.style.display = 'block'; // Show table
+                tableContainer.style.display = isOverlayMode ? 'none' : 'block'; // Respect Overlay
+                ataBtn.style.display = 'inline-flex'; // Show ATA Button
                 overlay.classList.remove('hidden');     // Show Modal
                 
                 // Update Button to Red Close State
@@ -594,7 +596,6 @@
                 btn.style.borderColor = '#ef4444';
                 btn.style.color = '#b91c1c';
 
-                // Resize chart to new width/height
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
             } else {
                 // Collapse: Move back to Dashboard
@@ -613,14 +614,23 @@
 
                 overlay.classList.add('hidden');
                 tableContainer.style.display = 'none'; // Hide table
+                ataBtn.style.display = 'none'; // Hide ATA Button
                 
+                // Reset ATA state cleanly when closing the Data Table
+                if (isATAMode) {
+                    isATAMode = false;
+                    ataBtn.style.background = '#ffffff';
+                    ataBtn.style.borderColor = '#d1d5db';
+                    ataBtn.style.color = '#4b5563';
+                    if (window.currentFilteredData) renderTimeline(window.currentFilteredData);
+                }
+
                 // Revert Button to Neutral Gray State
                 btn.innerHTML = `Data Table`;
                 btn.style.background = '#ffffff';
                 btn.style.borderColor = '#d1d5db';
                 btn.style.color = '#4b5563';
 
-                // Resize chart back to normal dashboard limits
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
             }
             isTimelineTableExpanded = !isTimelineTableExpanded;
@@ -2428,29 +2438,7 @@
                     let tooltipAttr = tooltipHtml ? `data-tooltip-html="${encodeURIComponent(tooltipHtml)}"` : '';
                     let hoverClass = tooltipHtml ? 'timeline-cell-hover cursor-help' : '';
 
-                    let cellText = '';
-                    if (total > 0) {
-                        let numHtml = `<span class="font-extrabold text-gray-900">${total}</span>`;
-                        if (isATAMode && bucketFlights.length > 0) {
-                            let dotsHtml = '<div class="flex flex-wrap justify-center gap-[3px] mt-1 max-w-[40px]">';
-                            bucketFlights.forEach(f => {
-                                let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
-                                let bgC = 'bg-gray-400';
-                                if (f.STA_Raw && f.ATA) {
-                                    if (diffMins > 10) bgC = 'bg-red-500';
-                                    else if (diffMins < -10) bgC = 'bg-yellow-400';
-                                    else bgC = 'bg-green-500';
-                                }
-                                dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
-                            });
-                            dotsHtml += '</div>';
-                            cellText = `<div class="flex flex-col items-center justify-center leading-none">${numHtml}${dotsHtml}</div>`;
-                        } else {
-                            cellText = numHtml;
-                        }
-                    } else {
-                        cellText = `<span class="text-gray-300">-</span>`;
-                    }
+                    let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
 
                     tableHTML += `<td class="p-2 border text-center bg-gray-50 hover:bg-gray-200 transition-colors ${hoverClass}" ${tooltipAttr}>${cellText}</td>`;
                 });
@@ -2460,6 +2448,11 @@
             tableHTML += '</tbody></table>';
             document.getElementById('timelineTableContainer').innerHTML = tableHTML;
             // --- END HTML DATA TABLE GENERATION ---
+
+            // RESTORE VISIBILITY IF IN EXPANDED VIEW AND OVERLAY IS OFF
+            if (isTimelineTableExpanded && !isOverlayMode) {
+                document.getElementById('timelineTableContainer').style.display = 'block';
+            }
 
             if (isMultipleReclaims) {
                 chartReclaims.forEach((rc) => {
