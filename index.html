@@ -310,6 +310,8 @@
                     <div id="tooltip-punct-flight" class="mb-1"><span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span></div>
                     <div id="tooltip-punct-dates" class="mb-1 max-w-[200px] whitespace-normal"><span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div id="tooltip-punct-avgtime" class="mb-1"><span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-punct-reclaim" class="mb-1"><span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-punct-ac" class="mb-1"><span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div id="tooltip-punct-bags"><span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
                 </div>
@@ -1462,7 +1464,7 @@
                     tableTooltipContent.innerHTML = `
                         <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Punctuality Status</div>
                         <div class="mb-1"><span class="text-gray-400">STA:</span> <span class="font-bold text-white ml-1">${d.STA_Display}</span></div>
-                        <div class="mb-1"><span class="text-gray-400">ATA:</span> <span class="font-bold text-white ml-1">${formatCustomDate(d.ATA).replace('<br>', ' ')}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">ATA:</span> ${getAtaColorHtml(d.STA_Raw, d.ATA)}</div>
                         <div class="mt-2 text-center text-xs font-extrabold ${colorClass}">${diffText}</div>
                     `;
                 }
@@ -1931,6 +1933,7 @@
 
             // Tooltips updates for Max Bags
             if(maxBagFlight) {
+                let maxBTimeStr = formatCustomDate(maxBagFlight.ATA).replace('&nbsp;&nbsp;', ' ');
                 document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxBagFlight.Flight}</span>`;
                 document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.STA_Display}</span>`;
                 document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxBagFlight.STA_Raw, maxBagFlight.ATA)}`;
@@ -1987,11 +1990,13 @@
             let flightCounts = {};
             data.forEach(d => {
                 if (getPunctuality(d) === targetStatus) {
-                    if (!flightCounts[d.Flight]) flightCounts[d.Flight] = { count: 0, bags: [], diffs: [], dates: new Set() };
+                    if (!flightCounts[d.Flight]) flightCounts[d.Flight] = { count: 0, bags: [], diffs: [], dates: new Set(), reclaims: new Set(), acs: new Set() };
                     flightCounts[d.Flight].count++;
                     flightCounts[d.Flight].bags.push(d.BagCount);
                     flightCounts[d.Flight].diffs.push((d.ATA.getTime() - d.STA_Raw.getTime()) / 60000);
                     flightCounts[d.Flight].dates.add(formatCustomDate(d.ATA).split('&nbsp;')[0]); 
+                    flightCounts[d.Flight].reclaims.add(d.Reclaim);
+                    flightCounts[d.Flight].acs.add(d.Aircraft);
                 }
             });
 
@@ -2028,6 +2033,15 @@
 
                 document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 ${diffColor}">${avgStr}</span>`;
                 
+                // Add Reclaim and Aircraft Type details below Avg Time
+                let reclaimArr = Array.from(stats.reclaims);
+                let reclaimStr = reclaimArr.join(', ');
+                document.getElementById('tooltip-punct-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${reclaimStr}</span>`;
+                
+                let acArr = Array.from(stats.acs);
+                let acStr = acArr.join(', ');
+                document.getElementById('tooltip-punct-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${acStr}</span>`;
+
                 let maxB = Math.max(...stats.bags);
                 let minB = Math.min(...stats.bags);
                 let bagStr = minB === maxB ? `${maxB}` : `${minB} - ${maxB}`;
@@ -2037,6 +2051,8 @@
                 document.getElementById('tooltip-punct-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
                 document.getElementById('tooltip-punct-dates').innerHTML = `<span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">-</span>`;
                 document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-punct-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-punct-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
                 document.getElementById('tooltip-punct-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span>`;
             }
         }
