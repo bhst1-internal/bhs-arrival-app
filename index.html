@@ -1782,7 +1782,7 @@
                     // Update: Determine shape based on Aircraft type (Circle for WB, Triangle for NB)
                     let shapeHtml = '';
                     if (acDisplay === 'NB') {
-                        shapeHtml = `<span class="has-table-tooltip w-3 h-3 shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);" data-uid="${d.uid}" data-type="status"></span>`;
+                        shapeHtml = `<span class="has-table-tooltip w-[12px] h-[10px] shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);" data-uid="${d.uid}" data-type="status"></span>`;
                     } else {
                         shapeHtml = `<span class="has-table-tooltip w-2.5 h-2.5 rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`;
                     }
@@ -2406,7 +2406,7 @@
                                 let isNB = acType.includes('NARROW') || acType === 'NB';
                                 
                                 if (isNB) {
-                                    dotsHtml += `<span class="w-[10px] h-[10px] ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
+                                    dotsHtml += `<span class="w-[10px] h-2 ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
                                 } else {
                                     dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
                                 }
@@ -2467,38 +2467,7 @@
                     let tooltipAttr = tooltipHtml ? `data-tooltip-html="${encodeURIComponent(tooltipHtml)}"` : '';
                     let hoverClass = tooltipHtml ? 'timeline-cell-hover cursor-help' : '';
 
-                    let cellText = '';
-                    if (total > 0) {
-                        let numHtml = `<span class="font-extrabold text-gray-900">${total}</span>`;
-                        if (isATAMode && bucketFlights.length > 0) {
-                            // Update: Use shape based on Aircraft type (Triangle for NB, Circle for WB)
-                            let dotsHtml = '<div class="flex flex-wrap justify-center items-center gap-[3px] mt-1 max-w-[40px]">';
-                            bucketFlights.forEach(f => {
-                                let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
-                                let bgC = 'bg-gray-400';
-                                if (f.STA_Raw && f.ATA) {
-                                    if (diffMins > 10) bgC = 'bg-red-500';
-                                    else if (diffMins < -10) bgC = 'bg-yellow-400';
-                                    else bgC = 'bg-green-500';
-                                }
-                                
-                                let acType = (f.Aircraft || '').toUpperCase();
-                                let isNB = acType.includes('NARROW') || acType === 'NB';
-                                
-                                if (isNB) {
-                                    dotsHtml += `<span class="w-[10px] h-[10px] ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
-                                } else {
-                                    dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
-                                }
-                            });
-                            dotsHtml += '</div>';
-                            cellText = `<div class="flex flex-col items-center justify-center leading-none">${numHtml}${dotsHtml}</div>`;
-                        } else {
-                            cellText = numHtml;
-                        }
-                    } else {
-                        cellText = `<span class="text-gray-300">-</span>`;
-                    }
+                    let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
 
                     tableHTML += `<td class="p-2 border text-center bg-gray-50 hover:bg-gray-200 transition-colors ${hoverClass}" ${tooltipAttr}>${cellText}</td>`;
                 });
