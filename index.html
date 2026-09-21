@@ -281,11 +281,11 @@
                             </svg>
                             JPEG
                         </button>
-                        
+
                         <button id="ataModeBtn" onclick="toggleATAMode()" title="Toggle ATA Punctuality View" style="display:none;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
                             ATA
                         </button>
-
+                        
                         <button id="dataTableBtn" onclick="toggleDataTable()" title="Toggle Expanded View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
                             Data Table
                         </button>
@@ -584,7 +584,7 @@
                 chartDiv.classList.remove('h-[400px]');
                 chartDiv.classList.add('h-[450px]');
 
-                tableContainer.style.display = isOverlayMode ? 'none' : 'block'; // Respect Overlay
+                tableContainer.style.display = 'block'; // Ensure it becomes visible
                 ataBtn.style.display = 'inline-flex'; // Show ATA Button
                 overlay.classList.remove('hidden');     // Show Modal
                 
@@ -1329,7 +1329,23 @@
                 flightHidden.value = 'INTERNATIONAL'; 
                 flightText.innerText = 'International'; 
                 flightMenu.classList.add('hidden'); 
-                updateDashboardWithLoader();
+                
+                const intlReclaims = ['A', 'B', 'C', 'G', 'H', 'J'];
+                const checkboxes = document.querySelectorAll('.reclaim-checkbox');
+                checkboxes.forEach(cb => {
+                    if (intlReclaims.includes(cb.value.trim().toUpperCase())) {
+                        cb.checked = true;
+                    } else {
+                        cb.checked = false;
+                    }
+                });
+                
+                const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+                document.getElementById('chk-all-reclaims').checked = (selected.length === checkboxes.length);
+                document.getElementById('custom-reclaim-text').innerText = selected.length > 0 ? selected.join(', ') : 'None';
+                document.getElementById('slicer-reclaim').value = JSON.stringify(selected);
+                
+                updateDashboardWithLoader(); 
             });
 
             flightSearch.addEventListener('input', (e) => { filterFlightOptions(e.target.value); });
@@ -1850,202 +1866,6 @@
                 return; 
             }
 
-            // --- 1. NEW OVERLAY MODE LOGIC ---
-            if (typeof isOverlayMode !== 'undefined' && isOverlayMode) {
-                Plotly.purge('chart-timeline');
-                let traces = [];
-                let datesMap = {};
-                const interval = document.getElementById('slicer-interval').value;
-                const paletteLocal = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
-                
-                // Group data exclusively by Date and project time to a fixed 1-day axis
-                data.forEach(d => {
-                    let dt = new Date(d.ATA.getTime());
-                    
-                    // Change the date format from "yyyy-mm-dd" to "dd/mm"
-                    let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-                    
-                    // Standardize all times to a fixed date (Jan 1, 2000) for the overlay effect
-                    let timeNorm = new Date(2000, 0, 1, dt.getHours(), dt.getMinutes(), 0, 0);
-                    
-                    if (interval !== 'raw') {
-                        if (interval === 'hourly') timeNorm.setMinutes(0);
-                        else if (interval === '15min') timeNorm.setMinutes(Math.floor(timeNorm.getMinutes() / 15) * 15);
-                    }
-                    
-                    let tKey = timeNorm.getTime();
-                    if (!datesMap[dateStr]) datesMap[dateStr] = {};
-                    if (!datesMap[dateStr][tKey]) datesMap[dateStr][tKey] = 0;
-                    datesMap[dateStr][tKey] += d.BagCount;
-                });
-                
-                let step = interval === '15min' ? 900000 : 3600000; // Default to hourly intervals if raw/daily
-                let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
-                let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); // 24:00 of the same fixed day
-                
-                let globalMinT = startT;
-                let globalMaxT = endT;
-                let colorIndex = 0;
-
-                // Generate Area Chart trace for each individual date
-                for (let dateStr in datesMap) {
-                    let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
-                    if(actualTimes.length === 0) continue;
-                    
-                    // Anchor exactly 1 step before the first point and 1 step after the last point to prevent floating
-                    let minT = Math.min(...actualTimes) - step; 
-                    let maxT = Math.max(...actualTimes) + step;   
-                    
-                    // Expand the global axis range if the data extends into the previous/next day visually
-                    if (minT < globalMinT) globalMinT = minT;
-                    if (maxT > globalMaxT) globalMaxT = maxT;
-
-                    let xVals = [];
-                    let yVals = [];
-                    
-                    for(let t = minT; t <= maxT; t += step) {
-                        xVals.push(new Date(t));
-                        yVals.push(datesMap[dateStr][t] || 0); // Implicitly plots 0 at ends
-                    }
-
-                    let cColor = paletteLocal[colorIndex % paletteLocal.length];
-                    
-                    traces.push({
-                        x: xVals,
-                        y: yVals,
-                        type: 'scatter',
-                        mode: 'lines',
-                        fill: 'tozeroy',
-                        name: dateStr,
-                        hovertemplate: "<extra></extra>", // Replaces hoverinfo: 'none' to enable the data point highlighting (dots)
-                        opacity: 0.7,
-                        line: { shape: 'linear', width: 2, color: cColor }, 
-                        marker: { color: cColor }, // Add marker definition so the hover dot gets the correct color
-                        fillcolor: getRgba(cColor, 0.25)
-                    });
-                    colorIndex++;
-                }
-                
-                let layoutArgs = {
-                    margin: { t: 40, l: 70, r: 60, b: 40 }, // Expanded left margin slightly for the y-axis shift
-                    font: { family: 'Inter, sans-serif' },
-                    paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                    hovermode: 'x', 
-                    xaxis: { 
-                        title: null, // Removed x-axis text completely
-                        tickformat: '%H:%M', 
-                        showgrid: true,
-                        range: [globalMinT, globalMaxT], // Dynamically accommodates the 1-step extensions
-                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
-                    },
-                    yaxis: { 
-                        title: { text: 'No. of Bags', standoff: 20 }, // Shifted 5mm left
-                        showgrid: true, 
-                        rangemode: 'nonnegative' 
-                    },
-                    showlegend: true,
-                    legend: {
-                        orientation: 'h',
-                        x: 0.015, // Shifted ~5mm right from y-axis
-                        xanchor: 'left',
-                        y: 1.15,
-                        yanchor: 'bottom'
-                    }
-                };
-                
-                Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
-                
-                // Hide standard features irrelevant to Overlay Mode
-                document.getElementById('timelineTableContainer').style.display = 'none'; 
-                document.getElementById('timeline-date-range').style.display = 'none';
-                let defaultHoverDetails = document.getElementById('timeline-hover-details');
-                if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
-
-                let chartDivOverlay = document.getElementById('chart-timeline');
-                
-                // Ensure the custom overlay tooltip element exists
-                if (!document.getElementById('overlay-custom-tooltip')) {
-                    let tooltip = document.createElement('div');
-                    tooltip.id = 'overlay-custom-tooltip';
-                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
-                    tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
-                    document.body.appendChild(tooltip);
-                }
-
-                if (chartDivOverlay.removeAllListeners) {
-                    chartDivOverlay.removeAllListeners('plotly_hover');
-                    chartDivOverlay.removeAllListeners('plotly_unhover');
-                    chartDivOverlay.removeAllListeners('plotly_restyle');
-                }
-
-                chartDivOverlay.on('plotly_hover', function(dataEvent) {
-                    if (!isOverlayMode) return;
-                    
-                    let xVal = dataEvent.points[0].x; 
-                    let timeStr = "00:00";
-                    
-                    // FIXED: Timezone extraction issue. We read the literal string format from Plotly 
-                    // (e.g. "2000-01-01 23:00") rather than allowing the Date object to offset into local time
-                    if (typeof xVal === 'string') {
-                        let match = xVal.match(/(\d{2}:\d{2})/);
-                        if (match) timeStr = match[1];
-                    } else {
-                        let t = new Date(xVal);
-                        timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
-                    }
-                    
-                    let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
-                    
-                    let pts = dataEvent.points.slice().sort((a,b) => b.y - a.y);
-                    
-                    pts.forEach(pt => {
-                        let dateName = pt.data.name;
-                        let val = pt.y;
-                        let color = pt.fullData.line.color;
-                        if (val > 0) { 
-                            html += `<div class="mb-1"><span style="color:${color}; font-size:1.2em; vertical-align:middle;">■</span> <span class="text-gray-400">${dateName}:</span> <span class="font-bold text-white ml-1">${val} bags</span></div>`;
-                        }
-                    });
-
-                    if (pts.every(pt => pt.y === 0)) {
-                        html += `<div class="text-gray-500 italic">No Bags Overlay</div>`;
-                    }
-                    
-                    document.getElementById('overlay-tooltip-content').innerHTML = html;
-                    let tooltip = document.getElementById('overlay-custom-tooltip');
-                    let evt = dataEvent.event;
-                    
-                    tooltip.style.left = evt.pageX + 'px';
-                    tooltip.style.top = (evt.pageY - 20) + 'px';
-                    tooltip.style.transform = 'translate(-50%, -100%)';
-                    tooltip.style.opacity = '1';
-                });
-
-                chartDivOverlay.on('plotly_unhover', function() { 
-                    let tooltip = document.getElementById('overlay-custom-tooltip');
-                    if(tooltip) tooltip.style.opacity = '0'; 
-                });
-
-                if (!chartDivOverlay._overlayMouseAttached) {
-                    chartDivOverlay.addEventListener('mousemove', (evt) => { 
-                        if (!isOverlayMode) return;
-                        let tooltip = document.getElementById('overlay-custom-tooltip'); 
-                        if(tooltip && tooltip.style.opacity === '1') { 
-                            tooltip.style.left = evt.pageX + 'px'; 
-                            tooltip.style.top = (evt.pageY - 20) + 'px';
-                            tooltip.style.transform = 'translate(-50%, -100%)'; 
-                        } 
-                    });
-                    chartDivOverlay._overlayMouseAttached = true;
-                }
-
-                return; 
-            } else {
-                let defaultHoverDetails = document.getElementById('timeline-hover-details');
-                if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
-            }
-            // --- END OVERLAY MODE LOGIC ---
-
             const interval = document.getElementById('slicer-interval').value;
             const pad = (n) => String(n).padStart(2, '0');
             const isDaily = (interval === 'daily');
@@ -2449,89 +2269,12 @@
             document.getElementById('timelineTableContainer').innerHTML = tableHTML;
             // --- END HTML DATA TABLE GENERATION ---
 
-            // RESTORE VISIBILITY IF IN EXPANDED VIEW AND OVERLAY IS OFF
-            if (isTimelineTableExpanded && !isOverlayMode) {
+            // RESTORE VISIBILITY IF IN EXPANDED VIEW
+            if (isTimelineTableExpanded) {
                 document.getElementById('timelineTableContainer').style.display = 'block';
             }
 
-            if (isMultipleReclaims) {
-                chartReclaims.forEach((rc) => {
-                    let rcColor = getReclaimColor(rc);
-                    let yRcBags = unifiedKeys.map(k => {
-                        let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                        let sim = 0;
-                        return actual + sim;
-                    });
-                    traces.push({
-                        x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                        fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba(rcColor, 0.35) : undefined,
-                        mode: bagsMode, name: rc, 
-                        text: [], 
-                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
-                        opacity: 1, 
-                        marker: { color: rcColor }, 
-                        line: isArea ? { width: 2, color: rcColor } : undefined
-                    });
-                });
-
-                if (isArea) {
-                    chartReclaims.forEach((rc) => {
-                        let yEstRc = []; let rcHasSim = false;
-                        for (let i = 0; i < unifiedKeys.length; i++) {
-                            let k = unifiedKeys[i];
-                            let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
-                            let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
-                            let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
-                            let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
-
-                            if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
-                            else { yEstRc.push(null); }
-                        }
-                        if (rcHasSim) {
-                            let rcColor = getReclaimColor(rc);
-                            traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
-                        }
-                    });
-                }
-            } else {
-                traces.push({ 
-                    x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
-                    fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba('#3399FF', 0.4) : undefined, 
-                    mode: bagsMode, name: 'Actual Bags', 
-                    text: [], 
-                    textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
-                    textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
-                    opacity: 1, 
-                    marker: { color: '#3399FF' }, 
-                    line: isArea ? { width: 2, color: '#3399FF' } : undefined
-                });
-
-                if (isArea) {
-                    let yEstSingle = []; let rcHasSim = false;
-                    for (let i = 0; i < unifiedKeys.length; i++) {
-                        let k = unifiedKeys[i];
-                        let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
-                        let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
-                        let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
-
-                        if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
-                        else { yEstSingle.push(null); }
-                    }
-                    if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
-                }
-            }
-
-            traces.push(
-                { x: xVals, y: yNB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total NB', 
-                  text: showDailyLabels ? yNB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
-                  marker: { symbol: 'square', size: yNB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#10b981' }, 
-                  textfont: { size: 11, weight: 'bold' }, line: { color: '#10b981', dash: 'solid', width: 2 } },
-                { x: xVals, y: yWB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total WB', 
-                  text: showDailyLabels ? yWB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
-                  marker: { symbol: 'square', size: yWB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#f59e0b' }, 
-                  textfont: { size: 11, weight: 'bold' }, line: { color: '#f59e0b', dash: 'solid', width: 2 } }
-            );
-
+            // --- METRICS CALCULATION (Independent of plotting) ---
             let maxCombinedBags = 0; let peakKey = null;
 
             for (let i = 0; i < unifiedKeys.length; i++) {
@@ -2629,10 +2372,6 @@
             let xRangeEnd = isDaily ? eTimeStart : eTime;
             let stepVal = xAxisDtick || 86400000;
 
-            let dateLabelEl = document.getElementById('timeline-date-range');
-            dateLabelEl.style.display = 'none';
-            dateLabelEl.innerHTML = '';
-
             let layoutArgs = {
                 margin: { t: 10, l: 60, r: 60, b: 60 },
                 font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
@@ -2660,39 +2399,127 @@
                 showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) }
             };
 
-            Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
+            // --- STANDARD CHART PLOTTING (Only if Overlay is OFF) ---
+            if (!isOverlayMode) {
+                let traces = [];
+                let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
 
-            if (chartDiv.removeAllListeners) {
-                chartDiv.removeAllListeners('plotly_hover');
-                chartDiv.removeAllListeners('plotly_unhover');
-                chartDiv.removeAllListeners('plotly_restyle');
-            }
-            
-            chartDiv.on('plotly_restyle', function(data) {
-                let chartData = chartDiv.data;
-                let visibleMap = {};
-                chartData.forEach(trace => {
-                    visibleMap[trace.name] = (trace.visible !== 'legendonly' && trace.visible !== false);
-                });
-                document.querySelectorAll('#timelineTableContainer tbody tr').forEach(tr => {
-                    let rc = tr.getAttribute('data-row-reclaim');
-                    if (rc && rc !== 'TOTAL') { 
-                        if (visibleMap[rc] === false) {
-                            tr.style.display = 'none';
-                        } else {
-                            tr.style.display = '';
+                if (isMultipleReclaims) {
+                    chartReclaims.forEach((rc) => {
+                        let rcColor = getReclaimColor(rc);
+                        let yRcBags = unifiedKeys.map(k => {
+                            let actual = (agg[k] && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                            let sim = 0;
+                            return actual + sim;
+                        });
+                        traces.push({
+                            x: xVals, y: yRcBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                            fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba(rcColor, 0.35) : undefined,
+                            mode: bagsMode, name: rc, 
+                            text: [], 
+                            textposition: 'inside', insidetextanchor: 'middle', textangle: 0, textfont: { size: 10, weight: 'bold', color: 'white' },
+                            opacity: 1, 
+                            marker: { color: rcColor }, 
+                            line: isArea ? { width: 2, color: rcColor } : undefined
+                        });
+                    });
+
+                    if (isArea) {
+                        chartReclaims.forEach((rc) => {
+                            let yEstRc = []; let rcHasSim = false;
+                            for (let i = 0; i < unifiedKeys.length; i++) {
+                                let k = unifiedKeys[i];
+                                let actualRc = (agg[k] && agg[k].reclaims && agg[k].reclaims[rc]) ? agg[k].reclaims[rc] : 0;
+                                let simRc = (simAgg[k] && simAgg[k].reclaims && simAgg[k].reclaims[rc]) ? simAgg[k].reclaims[rc] : 0;
+                                let prevSim = i > 0 ? ((simAgg[unifiedKeys[i-1]] && simAgg[unifiedKeys[i-1]].reclaims && simAgg[unifiedKeys[i-1]].reclaims[rc]) ? simAgg[unifiedKeys[i-1]].reclaims[rc] : 0) : 0;
+                                let nextSim = i < unifiedKeys.length - 1 ? ((simAgg[unifiedKeys[i+1]] && simAgg[unifiedKeys[i+1]].reclaims && simAgg[unifiedKeys[i+1]].reclaims[rc]) ? simAgg[unifiedKeys[i+1]].reclaims[rc] : 0) : 0;
+
+                                if (simRc > 0 || prevSim > 0 || nextSim > 0) { yEstRc.push(actualRc + simRc); if (simRc > 0) rcHasSim = true; } 
+                                else { yEstRc.push(null); }
+                            }
+                            if (rcHasSim) {
+                                let rcColor = getReclaimColor(rc);
+                                traces.push({ x: xVals, y: yEstRc, type: 'scatter', fill: 'none', mode: 'lines+markers', name: `Sim ${rc}`, line: { color: rcColor, width: 2.5, dash: 'dot' }, marker: { color: rcColor, size: 6 }, hovertemplate: `<b>Sim ${rc}:</b> %{y}<extra></extra>` });
+                            }
+                        });
+                    }
+                } else {
+                    traces.push({ 
+                        x: xVals, y: yBags, customdata: customDataBags, hovertemplate: "<extra></extra>", type: bagsType, 
+                        fill: isArea ? 'tozeroy' : undefined, fillcolor: isArea ? getRgba('#3399FF', 0.4) : undefined, 
+                        mode: bagsMode, name: 'Actual Bags', 
+                        text: [], 
+                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, 
+                        textfont: { size: 12, weight: 'bold', color: showDailyLabels ? 'white' : 'black' },
+                        opacity: 1, 
+                        marker: { color: '#3399FF' }, 
+                        line: isArea ? { width: 2, color: '#3399FF' } : undefined
+                    });
+
+                    if (isArea) {
+                        let yEstSingle = []; let rcHasSim = false;
+                        for (let i = 0; i < unifiedKeys.length; i++) {
+                            let k = unifiedKeys[i];
+                            let actualTotal = agg[k] ? agg[k].bags : 0; let simTotal = simAgg[k] ? simAgg[k].bags : 0;
+                            let prevSim = i > 0 ? (simAgg[unifiedKeys[i-1]] ? simAgg[unifiedKeys[i-1]].bags : 0) : 0;
+                            let nextSim = i < unifiedKeys.length - 1 ? (simAgg[unifiedKeys[i+1]] ? simAgg[unifiedKeys[i+1]].bags : 0) : 0;
+
+                            if (simTotal > 0 || prevSim > 0 || nextSim > 0) { yEstSingle.push(actualTotal + simTotal); if (simTotal > 0) rcHasSim = true; } 
+                            else { yEstSingle.push(null); }
                         }
+                        if (rcHasSim) { traces.push({ x: xVals, y: yEstSingle, type: 'scatter', fill: 'none', mode: 'lines+markers', name: 'Sim Combined Bags', line: { color: 'rgba(239, 68, 68, 1)', width: 2.5, dash: 'dot' }, marker: { color: 'rgba(239, 68, 68, 1)', size: 6 }, hovertemplate: "<b>Sim Combined Bags:</b> %{y}<extra></extra>" }); }
+                    }
+                }
+
+                traces.push(
+                    { x: xVals, y: yNB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total NB', 
+                      text: showDailyLabels ? yNB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
+                      marker: { symbol: 'square', size: yNB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#10b981' }, 
+                      textfont: { size: 11, weight: 'bold' }, line: { color: '#10b981', dash: 'solid', width: 2 } },
+                    { x: xVals, y: yWB, yaxis: 'y2', customdata: customDataBags, hovertemplate: "<extra></extra>", type: 'scatter', mode: 'lines+markers+text', name: 'Total WB', 
+                      text: showDailyLabels ? yWB.map(v => v > 0 ? v : '') : [], textposition: 'middle center', 
+                      marker: { symbol: 'square', size: yWB.map((v, i) => v > 0 && !(agg[unifiedKeys[i]]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0), color: '#f59e0b' }, 
+                      textfont: { size: 11, weight: 'bold' }, line: { color: '#f59e0b', dash: 'solid', width: 2 } }
+                );
+
+                let dateLabelEl = document.getElementById('timeline-date-range');
+                dateLabelEl.style.display = 'none';
+                dateLabelEl.innerHTML = '';
+
+                Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
+
+                if (chartDiv.removeAllListeners) {
+                    chartDiv.removeAllListeners('plotly_hover');
+                    chartDiv.removeAllListeners('plotly_unhover');
+                    chartDiv.removeAllListeners('plotly_restyle');
+                }
+                
+                chartDiv.on('plotly_restyle', function(data) {
+                    let chartData = chartDiv.data;
+                    let visibleMap = {};
+                    chartData.forEach(trace => {
+                        visibleMap[trace.name] = (trace.visible !== 'legendonly' && trace.visible !== false);
+                    });
+                    document.querySelectorAll('#timelineTableContainer tbody tr').forEach(tr => {
+                        let rc = tr.getAttribute('data-row-reclaim');
+                        if (rc && rc !== 'TOTAL') { 
+                            if (visibleMap[rc] === false) {
+                                tr.style.display = 'none';
+                            } else {
+                                tr.style.display = '';
+                            }
+                        }
+                    });
+                });
+
+                chartDiv.on('plotly_hover', function(data) {
+                    if (data.points.length > 0) {
+                        let pt = data.points.find(p => p.customdata !== undefined); 
+                        if (pt && pt.customdata) document.getElementById('timeline-hover-details').innerHTML = pt.customdata;
                     }
                 });
-            });
-
-            chartDiv.on('plotly_hover', function(data) {
-                if (data.points.length > 0) {
-                    let pt = data.points.find(p => p.customdata !== undefined); 
-                    if (pt && pt.customdata) document.getElementById('timeline-hover-details').innerHTML = pt.customdata;
-                }
-            });
-            chartDiv.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
+                chartDiv.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
+            }
         }
 
         const layoutCommon = { margin: { t: 10, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff' };
