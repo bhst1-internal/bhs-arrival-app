@@ -722,12 +722,21 @@
             const origModalBodyOverflow = modalBody ? modalBody.style.overflow : '';
             const origModalWrapperOverflow = modalWrapper ? modalWrapper.style.overflow : '';
 
+            // Handle Sticky Columns (Temporarily disable sticky positioning so they don't overlap)
+            const stickyElements = section.querySelectorAll('.sticky');
+            const origStickyPositions = [];
+            stickyElements.forEach(el => {
+                origStickyPositions.push(el.style.position);
+                el.style.setProperty('position', 'static', 'important');
+            });
+
             // Expand everything so html2canvas sees it without clipping
             if (isTimelineTableExpanded) {
                 if (tableScrollDiv) tableScrollDiv.style.overflowX = 'visible';
                 if (modalBody) modalBody.style.overflow = 'visible';
                 if (modalWrapper) modalWrapper.style.overflow = 'visible';
                 
+                // Set the section width to the max scroll width so html2canvas renders the full table length
                 const fullWidth = tableScrollDiv ? Math.max(section.offsetWidth, tableScrollDiv.scrollWidth) : section.offsetWidth;
                 section.style.width = fullWidth + 'px';
             }
@@ -739,6 +748,11 @@
             }).then(canvas => {
                 // Restore UI immediately
                 btnGroup.style.display = btnOrigDisplay;
+                
+                stickyElements.forEach((el, index) => {
+                    el.style.position = origStickyPositions[index];
+                });
+
                 if (isTimelineTableExpanded) {
                     if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
                     if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
@@ -756,6 +770,11 @@
                 
                 // Fallback restore
                 btnGroup.style.display = btnOrigDisplay;
+                
+                stickyElements.forEach((el, index) => {
+                    el.style.position = origStickyPositions[index];
+                });
+
                 if (isTimelineTableExpanded) {
                     if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
                     if (modalBody) modalBody.style.overflow = origModalBodyOverflow;
