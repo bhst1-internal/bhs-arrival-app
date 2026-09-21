@@ -282,6 +282,10 @@
                             JPEG
                         </button>
                         
+                        <button id="ataModeBtn" onclick="toggleATAMode()" title="Toggle ATA Punctuality View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
+                            ATA
+                        </button>
+
                         <button id="dataTableBtn" onclick="toggleDataTable()" title="Toggle Expanded View" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
                             Data Table
                         </button>
@@ -509,12 +513,32 @@
         // --- TIMELINE DATA TABLE & CONTROLS LOGIC ---
         let isTimelineTableExpanded = false;
         let isOverlayMode = false;
+        let isATAMode = false;
 
         function toggleOverlay() {
             isOverlayMode = !isOverlayMode;
             const btn = document.getElementById('overlayBtn');
             
             if (isOverlayMode) {
+                btn.style.background = '#e0f2fe';
+                btn.style.borderColor = '#0284c7';
+                btn.style.color = '#0369a1';
+            } else {
+                btn.style.background = '#ffffff';
+                btn.style.borderColor = '#d1d5db';
+                btn.style.color = '#4b5563';
+            }
+            
+            if (window.currentFilteredData) {
+                renderTimeline(window.currentFilteredData);
+            }
+        }
+
+        function toggleATAMode() {
+            isATAMode = !isATAMode;
+            const btn = document.getElementById('ataModeBtn');
+            
+            if (isATAMode) {
                 btn.style.background = '#e0f2fe';
                 btn.style.borderColor = '#0284c7';
                 btn.style.color = '#0369a1';
@@ -1705,20 +1729,16 @@
                 if (isSimOrShifted) {
                     textClass = 'text-orange-700 italic';
                 } else {
+                    textClass = 'text-blue-600'; // Always blue for best look
                     if (d.STA_Raw && d.ATA) {
                         let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
                         if (diffMins > 10) {
                             circleClass = 'bg-red-500';
-                            textClass = 'text-red-600 font-extrabold';
                         } else if (diffMins < -10) {
                             circleClass = 'bg-yellow-400';
-                            textClass = 'text-yellow-600 font-extrabold';
                         } else {
                             circleClass = 'bg-green-500';
-                            textClass = 'text-green-600 font-extrabold';
                         }
-                    } else {
-                        textClass = 'text-blue-600';
                     }
                 }
                 
@@ -2307,6 +2327,10 @@
                     let tooltipHtml = '';
                     if(bucketFlights.length > 0) {
                         tooltipHtml += `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Flight Details (${rc})</div>`;
+                        
+                        let gridClass = bucketFlights.length > 3 ? (bucketFlights.length > 6 ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-2 gap-3') : 'flex flex-col gap-2';
+                        tooltipHtml += `<div class="${gridClass} max-h-[60vh] overflow-y-auto sim-scroll pr-1 pb-1 w-max">`;
+                        
                         bucketFlights.forEach(f => {
                             let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
                             let ataColor = 'text-white';
@@ -2318,20 +2342,45 @@
                             let staStr = f.STA_Display || '-';
                             let ataStr = formatCustomDate(f.ATA).replace(/&nbsp;/g, ' ') || '-';
                             
-                            tooltipHtml += `<div class="mb-2 border-b border-gray-700 pb-1.5 last:border-0 last:pb-0 last:mb-0">
+                            tooltipHtml += `<div class="bg-gray-700/50 p-2 rounded border border-gray-600 min-w-[140px]">
                                 <div class="mb-0.5"><span class="text-gray-400">Flight:</span> <span class="font-bold text-blue-300 ml-1">${f.Flight}</span></div>
                                 <div class="mb-0.5"><span class="text-gray-400">STA:</span> <span class="font-bold text-white ml-1">${staStr}</span></div>
                                 <div class="mb-0.5"><span class="text-gray-400">ATA:</span> <span class="font-bold ${ataColor} ml-1">${ataStr}</span></div>
                                 <div><span class="text-gray-400">Bags:</span> <span class="font-bold text-white ml-1">${f.BagCount}</span></div>
                             </div>`;
                         });
+                        tooltipHtml += `</div>`;
                     }
                     let tooltipAttr = tooltipHtml ? `data-tooltip-html="${encodeURIComponent(tooltipHtml)}"` : '';
                     let hoverClass = tooltipHtml ? 'timeline-cell-hover cursor-help' : '';
 
                     let total = actual + sim;
                     rowSum += total;
-                    let cellText = total > 0 ? `<span class="font-bold text-gray-800">${total}</span>` : `<span class="text-gray-300">-</span>`;
+                    
+                    let cellText = '';
+                    if (total > 0) {
+                        let numHtml = `<span class="font-bold text-gray-800">${total}</span>`;
+                        if (isATAMode && bucketFlights.length > 0) {
+                            let dotsHtml = '<div class="flex flex-wrap justify-center gap-[3px] mt-1 max-w-[40px]">';
+                            bucketFlights.forEach(f => {
+                                let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
+                                let bgC = 'bg-gray-400';
+                                if (f.STA_Raw && f.ATA) {
+                                    if (diffMins > 10) bgC = 'bg-red-500';
+                                    else if (diffMins < -10) bgC = 'bg-yellow-400';
+                                    else bgC = 'bg-green-500';
+                                }
+                                dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
+                            });
+                            dotsHtml += '</div>';
+                            cellText = `<div class="flex flex-col items-center justify-center leading-none">${numHtml}${dotsHtml}</div>`;
+                        } else {
+                            cellText = numHtml;
+                        }
+                    } else {
+                        cellText = `<span class="text-gray-300">-</span>`;
+                    }
+                    
                     tableHTML += `<td class="p-2 border text-center hover:bg-blue-50 transition-colors ${hoverClass}" ${tooltipAttr}>${cellText}</td>`;
                 });
                 
@@ -2352,6 +2401,10 @@
                     let tooltipHtml = '';
                     if(bucketFlights.length > 0) {
                         tooltipHtml += `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Flight Details</div>`;
+                        
+                        let gridClass = bucketFlights.length > 3 ? (bucketFlights.length > 6 ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-2 gap-3') : 'flex flex-col gap-2';
+                        tooltipHtml += `<div class="${gridClass} max-h-[60vh] overflow-y-auto sim-scroll pr-1 pb-1 w-max">`;
+                        
                         bucketFlights.forEach(f => {
                             let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
                             let ataColor = 'text-white';
@@ -2363,18 +2416,42 @@
                             let staStr = f.STA_Display || '-';
                             let ataStr = formatCustomDate(f.ATA).replace(/&nbsp;/g, ' ') || '-';
                             
-                            tooltipHtml += `<div class="mb-2 border-b border-gray-700 pb-1.5 last:border-0 last:pb-0 last:mb-0">
+                            tooltipHtml += `<div class="bg-gray-700/50 p-2 rounded border border-gray-600 min-w-[140px]">
                                 <div class="mb-0.5"><span class="text-gray-400">Flight:</span> <span class="font-bold text-blue-300 ml-1">${f.Flight}</span></div>
                                 <div class="mb-0.5"><span class="text-gray-400">STA:</span> <span class="font-bold text-white ml-1">${staStr}</span></div>
                                 <div class="mb-0.5"><span class="text-gray-400">ATA:</span> <span class="font-bold ${ataColor} ml-1">${ataStr}</span></div>
                                 <div><span class="text-gray-400">Bags:</span> <span class="font-bold text-white ml-1">${f.BagCount}</span></div>
                             </div>`;
                         });
+                        tooltipHtml += `</div>`;
                     }
                     let tooltipAttr = tooltipHtml ? `data-tooltip-html="${encodeURIComponent(tooltipHtml)}"` : '';
                     let hoverClass = tooltipHtml ? 'timeline-cell-hover cursor-help' : '';
 
-                    let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
+                    let cellText = '';
+                    if (total > 0) {
+                        let numHtml = `<span class="font-extrabold text-gray-900">${total}</span>`;
+                        if (isATAMode && bucketFlights.length > 0) {
+                            let dotsHtml = '<div class="flex flex-wrap justify-center gap-[3px] mt-1 max-w-[40px]">';
+                            bucketFlights.forEach(f => {
+                                let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
+                                let bgC = 'bg-gray-400';
+                                if (f.STA_Raw && f.ATA) {
+                                    if (diffMins > 10) bgC = 'bg-red-500';
+                                    else if (diffMins < -10) bgC = 'bg-yellow-400';
+                                    else bgC = 'bg-green-500';
+                                }
+                                dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
+                            });
+                            dotsHtml += '</div>';
+                            cellText = `<div class="flex flex-col items-center justify-center leading-none">${numHtml}${dotsHtml}</div>`;
+                        } else {
+                            cellText = numHtml;
+                        }
+                    } else {
+                        cellText = `<span class="text-gray-300">-</span>`;
+                    }
+
                     tableHTML += `<td class="p-2 border text-center bg-gray-50 hover:bg-gray-200 transition-colors ${hoverClass}" ${tooltipAttr}>${cellText}</td>`;
                 });
                 let gText = grandTotal > 0 ? `<span class="font-extrabold text-blue-800">${grandTotal}</span>` : `<span class="text-gray-300">-</span>`;
