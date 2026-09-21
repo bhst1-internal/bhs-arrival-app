@@ -268,13 +268,23 @@
             </div>
 
             <!-- Combined Avg Duration -->
-            <div class="bg-orange-600 text-white p-4 rounded-lg shadow text-center flex flex-col justify-center">
-                <h4 class="text-xs uppercase opacity-80 mb-1">Avg Duration (min)</h4>
-                <div class="text-[0.65rem] font-bold uppercase tracking-widest opacity-90 border-b border-orange-500/50 pb-1 mb-1 mx-4">BR &nbsp;|&nbsp; Reclaim</div>
-                <div class="text-2xl font-bold flex justify-center items-center gap-2">
-                    <span id="kpi-duration" class="text-white">-</span>
-                    <span class="text-lg opacity-40">|</span>
-                    <span id="kpi-firstbag" class="text-white">-</span>
+            <div class="bg-orange-600 text-white p-4 rounded-lg shadow flex flex-col justify-center relative">
+                <h4 class="text-xs uppercase opacity-80 mb-2 text-center">Avg Duration (min)</h4>
+                <div class="flex flex-row relative mt-1">
+                    <!-- Centered Vertical Line -->
+                    <div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/40 -translate-x-1/2"></div>
+                    
+                    <!-- BR Section -->
+                    <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="text-xs uppercase font-bold tracking-widest opacity-90 mb-0.5">BR</div>
+                        <div id="kpi-duration" class="text-2xl font-bold">0.0</div>
+                    </div>
+                    
+                    <!-- Reclaim Section -->
+                    <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="text-xs uppercase font-bold tracking-widest opacity-90 mb-0.5">Reclaim</div>
+                        <div id="kpi-firstbag" class="text-2xl font-bold">0.0</div>
+                    </div>
                 </div>
             </div>
             
