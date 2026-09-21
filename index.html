@@ -1782,7 +1782,7 @@
                     // Update: Determine shape based on Aircraft type (Circle for WB, Triangle for NB)
                     let shapeHtml = '';
                     if (acDisplay === 'NB') {
-                        shapeHtml = `<span class="has-table-tooltip w-[12px] h-[10px] shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);" data-uid="${d.uid}" data-type="status"></span>`;
+                        shapeHtml = `<span class="has-table-tooltip w-[10px] h-[10px] shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);" data-uid="${d.uid}" data-type="status"></span>`;
                     } else {
                         shapeHtml = `<span class="has-table-tooltip w-2.5 h-2.5 rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`;
                     }
@@ -1978,7 +1978,6 @@
                 
                 Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
                 
-                // REMOVED to keep Data Table visible: document.getElementById('timelineTableContainer').style.display = 'none'; 
                 document.getElementById('timeline-date-range').style.display = 'none';
                 let defaultHoverDetails = document.getElementById('timeline-hover-details');
                 if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
@@ -2058,8 +2057,6 @@
                     });
                     chartDivOverlay._overlayMouseAttached = true;
                 }
-
-                // REMOVED to continue execution and generate standard HTML Data Table: return; 
             } else {
                 let defaultHoverDetails = document.getElementById('timeline-hover-details');
                 if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
@@ -2216,6 +2213,36 @@
             let allKeysSet = new Set([...Object.keys(agg).map(Number), ...Object.keys(simAgg).map(Number)]);
             let unifiedKeys = Array.from(allKeysSet).sort((a, b) => a - b);
             
+            // --- ENHANCEMENT: Gap filling for intervals to flatten zero-bag periods ---
+            let gapDt = 0;
+            if (interval === '15min') gapDt = 900000;
+            else if (interval === 'hourly') gapDt = 3600000;
+            else if (interval === 'daily') gapDt = 86400000;
+
+            if (gapDt > 0) {
+                let extraKeys = [];
+                for (let i = 0; i < unifiedKeys.length - 1; i++) {
+                    let currK = unifiedKeys[i];
+                    let nextK = unifiedKeys[i+1];
+                    
+                    if (nextK - currK > gapDt) {
+                        if (!allKeysSet.has(currK + gapDt)) extraKeys.push(currK + gapDt);
+                        
+                        if (nextK - gapDt > currK + gapDt && !allKeysSet.has(nextK - gapDt)) {
+                            extraKeys.push(nextK - gapDt);
+                        }
+                    }
+                }
+                
+                extraKeys.forEach(k => {
+                    if (!agg[k]) agg[k] = { date: new Date(k), bags: 0, nb: 0, wb: 0, flights: [], reclaims: {}, isSynthetic: true, label: "No Flights" };
+                    allKeysSet.add(k);
+                });
+                
+                unifiedKeys = Array.from(allKeysSet).sort((a, b) => a - b);
+            }
+            // -------------------------------------------------------------------------
+
             let xVals = unifiedKeys.map(k => new Date(Number(k)));
             let yBags = unifiedKeys.map(k => {
                 let actual = agg[k] ? agg[k].bags : 0;
@@ -2391,7 +2418,6 @@
                     if (total > 0) {
                         let numHtml = `<span class="font-bold text-gray-800">${total}</span>`;
                         if (isATAMode && bucketFlights.length > 0) {
-                            // Update: Use shape based on Aircraft type (Triangle for NB, Circle for WB)
                             let dotsHtml = '<div class="flex flex-wrap justify-center items-center gap-[3px] mt-1 max-w-[40px]">';
                             bucketFlights.forEach(f => {
                                 let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
@@ -2406,9 +2432,9 @@
                                 let isNB = acType.includes('NARROW') || acType === 'NB';
                                 
                                 if (isNB) {
-                                    dotsHtml += `<span class="w-[10px] h-2 ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
+                                    dotsHtml += `<span class="w-[8px] h-[8px] ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
                                 } else {
-                                    dotsHtml += `<span class="w-2 h-2 rounded-full ${bgC} shadow-sm"></span>`;
+                                    dotsHtml += `<span class="w-[8px] h-[8px] rounded-full ${bgC} shadow-sm"></span>`;
                                 }
                             });
                             dotsHtml += '</div>';
