@@ -1760,7 +1760,7 @@
                 if (isSimOrShifted) {
                     textClass = 'text-orange-700 italic';
                 } else {
-                    textClass = 'text-blue-600'; // Always blue for best look
+                    textClass = 'text-blue-600'; 
                     if (d.STA_Raw && d.ATA) {
                         let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
                         if (diffMins > 10) {
@@ -1779,12 +1779,16 @@
                 let flightBox = d.Flight;
 
                 if (!d.isSim) {
-                    // Update: Determine shape based on Aircraft type (Circle for WB, Triangle for NB)
+                    // Update: Determine shape based on Aircraft type. Uses inline SVG so html2canvas renders it perfectly.
                     let shapeHtml = '';
                     if (acDisplay === 'NB') {
-                        shapeHtml = `<span class="has-table-tooltip w-[10px] h-[10px] shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);" data-uid="${d.uid}" data-type="status"></span>`;
+                        let textColorClass = circleClass.replace('bg-', 'text-');
+                        shapeHtml = `
+                            <svg class="has-table-tooltip w-[10px] h-[10px] shrink-0 cursor-help ${textColorClass} hover:opacity-80 drop-shadow-sm" viewBox="0 0 10 10" data-uid="${d.uid}" data-type="status" style="overflow:visible;">
+                                <polygon points="5,0 0,10 10,10" fill="currentColor"></polygon>
+                            </svg>`;
                     } else {
-                        shapeHtml = `<span class="has-table-tooltip w-2.5 h-2.5 rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`;
+                        shapeHtml = `<span class="has-table-tooltip w-[10px] h-[10px] rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`;
                     }
 
                     flightBox = `
@@ -2167,8 +2171,9 @@
                 const flightsCount = fNB + fWB;
                 
                 let simFlightsArr = [];
-                for(let i=0; i<fNB; i++) simFlightsArr.push({ flight: `Dummy Flight ${simId}`, ac: 'NB', bags: bNB });
-                for(let i=0; i<fWB; i++) simFlightsArr.push({ flight: `Dummy Flight ${simId}`, ac: 'WB', bags: bWB });
+                // Include reclaim dynamically into simFlightsArr for legend filtering later
+                for(let i=0; i<fNB; i++) simFlightsArr.push({ flight: `Dummy Flight ${simId}`, ac: 'NB', bags: bNB, reclaim: targetReclaim });
+                for(let i=0; i<fWB; i++) simFlightsArr.push({ flight: `Dummy Flight ${simId}`, ac: 'WB', bags: bWB, reclaim: targetReclaim });
 
                 let selectedRecs = getSelectedReclaims();
                 if(selectedRecs.includes('ALL') || selectedRecs.includes(targetReclaim)) {
@@ -2418,6 +2423,7 @@
                     if (total > 0) {
                         let numHtml = `<span class="font-bold text-gray-800">${total}</span>`;
                         if (isATAMode && bucketFlights.length > 0) {
+                            // Update: Use shape based on Aircraft type (Triangle for NB, Circle for WB)
                             let dotsHtml = '<div class="flex flex-wrap justify-center items-center gap-[3px] mt-1 max-w-[40px]">';
                             bucketFlights.forEach(f => {
                                 let diffMins = (f.STA_Raw && f.ATA) ? (f.ATA.getTime() - f.STA_Raw.getTime()) / 60000 : 0;
@@ -2432,7 +2438,10 @@
                                 let isNB = acType.includes('NARROW') || acType === 'NB';
                                 
                                 if (isNB) {
-                                    dotsHtml += `<span class="w-[8px] h-[8px] ${bgC} shadow-sm" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>`;
+                                    let textColorClass = bgC.replace('bg-', 'text-');
+                                    dotsHtml += `<svg class="w-[8px] h-[8px] ${textColorClass}" viewBox="0 0 10 10" style="overflow:visible;">
+                                        <polygon points="5,0 0,10 10,10" fill="currentColor"></polygon>
+                                    </svg>`;
                                 } else {
                                     dotsHtml += `<span class="w-[8px] h-[8px] rounded-full ${bgC} shadow-sm"></span>`;
                                 }
@@ -2493,7 +2502,13 @@
                     let tooltipAttr = tooltipHtml ? `data-tooltip-html="${encodeURIComponent(tooltipHtml)}"` : '';
                     let hoverClass = tooltipHtml ? 'timeline-cell-hover cursor-help' : '';
 
-                    let cellText = total > 0 ? `<span class="font-extrabold text-gray-900">${total}</span>` : `<span class="text-gray-300">-</span>`;
+                    let cellText = '';
+                    if (total > 0) {
+                        // TOTAL ROW -> STRICTLY NUMBERS ONLY, no ATA dots injected
+                        cellText = `<span class="font-extrabold text-gray-900">${total}</span>`;
+                    } else {
+                        cellText = `<span class="text-gray-300">-</span>`;
+                    }
 
                     tableHTML += `<td class="p-2 border text-center bg-gray-50 hover:bg-gray-200 transition-colors ${hoverClass}" ${tooltipAttr}>${cellText}</td>`;
                 });
@@ -2730,11 +2745,15 @@
                 }
                 
                 chartDiv.on('plotly_restyle', function(data) {
+                    if (chartDiv._isUpdatingInternal) return;
+
                     let chartData = chartDiv.data;
                     let visibleMap = {};
                     chartData.forEach(trace => {
                         visibleMap[trace.name] = (trace.visible !== 'legendonly' && trace.visible !== false);
                     });
+
+                    // 1. UPDATE TABLE ROW VISIBILITY
                     document.querySelectorAll('#timelineTableContainer tbody tr').forEach(tr => {
                         let rc = tr.getAttribute('data-row-reclaim');
                         if (rc && rc !== 'TOTAL') { 
@@ -2745,6 +2764,64 @@
                             }
                         }
                     });
+
+                    // 2. DYNAMICALLY RECALCULATE TOTAL NB & TOTAL WB TRACES
+                    let nbTraceIndex = chartData.findIndex(t => t.name === 'Total NB');
+                    let wbTraceIndex = chartData.findIndex(t => t.name === 'Total WB');
+
+                    if (nbTraceIndex !== -1 && wbTraceIndex !== -1) {
+                        let newYNB = [];
+                        let newYWB = [];
+                        let newTextNB = [];
+                        let newTextWB = [];
+                        let newSizeNB = [];
+                        let newSizeWB = [];
+
+                        unifiedKeys.forEach(k => {
+                            let nC = 0, wC = 0;
+                            
+                            // Check Actual Flights
+                            if (agg[k] && !agg[k].isSynthetic) {
+                                agg[k].flights.forEach(f => {
+                                    let rc = f.Reclaim;
+                                    let isVisible = isMultipleReclaims ? (visibleMap[rc] !== false) : (visibleMap['Actual Bags'] !== false);
+                                    if (isVisible) {
+                                        let ac = (f.Aircraft || '').toUpperCase();
+                                        if (ac.includes('WIDE') || ac.includes('WB')) wC++;
+                                        else if (ac.includes('NARROW') || ac.includes('NB') || ac !== 'UNKNOWN') nC++;
+                                    }
+                                });
+                            }
+
+                            // Check Simulated Flights
+                            if (simAgg[k]) {
+                                simAgg[k].simFlights.forEach(f => {
+                                    let rc = f.reclaim;
+                                    let isVisible = isMultipleReclaims ? (visibleMap[rc] !== false) : (visibleMap['Actual Bags'] !== false);
+                                    if (isVisible) {
+                                        if (f.ac === 'WB') wC++;
+                                        else nC++;
+                                    }
+                                });
+                            }
+
+                            newYNB.push(nC);
+                            newYWB.push(wC);
+                            newTextNB.push(showDailyLabels && nC > 0 ? nC : '');
+                            newTextWB.push(showDailyLabels && wC > 0 ? wC : '');
+                            newSizeNB.push(nC > 0 && !(agg[k]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0);
+                            newSizeWB.push(wC > 0 && !(agg[k]?.isSynthetic) ? (showDailyLabels ? 22 : 6) : 0);
+                        });
+
+                        chartDiv._isUpdatingInternal = true;
+                        Plotly.restyle(chartDiv, {
+                            y: [newYNB, newYWB],
+                            text: [newTextNB, newTextWB],
+                            'marker.size': [newSizeNB, newSizeWB]
+                        }, [nbTraceIndex, wbTraceIndex]).then(() => {
+                            chartDiv._isUpdatingInternal = false;
+                        });
+                    }
                 });
 
                 chartDiv.on('plotly_hover', function(data) {
