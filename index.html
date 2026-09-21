@@ -183,6 +183,9 @@
                         <div class="p-2 hover:bg-blue-50 cursor-pointer text-sm font-semibold border-b text-blue-600 flex-shrink-0 bg-white" id="opt-all-flights">
                             All Flights
                         </div>
+                        <div class="p-2 hover:bg-blue-50 cursor-pointer text-sm font-semibold border-b text-blue-600 flex-shrink-0 bg-white" id="opt-international-flights">
+                            International
+                        </div>
                         <div class="p-2 border-b bg-gray-50 flex-shrink-0">
                             <input type="text" id="flight-search-input" placeholder="Search flight..." class="w-full border p-1 rounded text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white">
                         </div>
@@ -1265,6 +1268,7 @@
             const flightHidden = document.getElementById('slicer-flight');
             const flightText = document.getElementById('custom-flight-text');
             const optAllFlights = document.getElementById('opt-all-flights');
+            const optIntlFlights = document.getElementById('opt-international-flights');
             
             flightSelectBtn.addEventListener('click', (e) => {
                 flightMenu.classList.toggle('hidden');
@@ -1279,6 +1283,13 @@
 
             optAllFlights.addEventListener('click', () => {
                 flightHidden.value = 'ALL'; flightText.innerText = 'All Flights'; flightMenu.classList.add('hidden'); updateDashboardWithLoader();
+            });
+            
+            optIntlFlights.addEventListener('click', () => {
+                flightHidden.value = 'INTERNATIONAL'; 
+                flightText.innerText = 'International'; 
+                flightMenu.classList.add('hidden'); 
+                updateDashboardWithLoader();
             });
 
             flightSearch.addEventListener('input', (e) => { filterFlightOptions(e.target.value); });
@@ -1515,6 +1526,8 @@
             const rcFilterVal = document.getElementById('slicer-reclaim').value;
             const startDate = getLocalStartOfDay(document.getElementById('filter-start-date').value);
             const endDate = getLocalEndOfDay(document.getElementById('filter-end-date').value);
+            
+            const internationalFlights = ["0D178", "3U3995", "6E1037", "8B661", "8B673", "8B675", "8B677", "8B679", "8M501", "8M503", "A12386", "AH3156", "BA33", "BG921", "BI871", "BI873", "BR217", "BR227", "BS315", "CA483", "CI721", "CX723", "CX725", "CX729", "CZ3047", "CZ349", "CZ5031", "CZ8011", "CZ8097", "CZ8301", "EK344", "EK346", "ET638", "EY486", "EY488", "FM7221", "FM863", "FM865", "FM885", "FY3611", "FY3693", "FY3971", "G9800", "GA820", "H9890", "HY553", "IA455", "ID7250", "ID7262", "ID7264", "ID7282", "IU168", "JL723", "JT156", "JT160", "JT164", "JX725", "JY160", "KL809", "MF847", "MF8677", "MF8723", "MF897", "MH1", "MH103", "MH105", "MH107", "MH109", "MH117", "MH119", "MH122", "MH126", "MH132", "MH134", "MH138", "MH144", "MH146", "MH148", "MH153", "MH157", "MH159", "MH165", "MH171", "MH178", "MH181", "MH183", "MH185", "MH191", "MH193", "MH195", "MH197", "MH199", "MH205", "MH209", "MH21", "MH250", "MH3", "MH319", "MH367", "MH377", "MH387", "MH389", "MH39", "MH469", "MH484", "MH486", "MH496", "MH521", "MH523", "MH53", "MH57", "MH580", "MH602", "MH604", "MH606", "MH608", "MH614", "MH616", "MH620", "MH624", "MH628", "MH64", "MH67", "MH705", "MH709", "MH710", "MH712", "MH714", "MH716", "MH720", "MH721", "MH726", "MH73", "MH747", "MH749", "MH751", "MH753", "MH755", "MH759", "MH773", "MH783", "MH785", "MH787", "MH789", "MH79", "MH791", "MH795", "MH797", "MH807", "MH840", "MH846", "MH850", "MH856", "MH865", "MH870", "MH872", "MH8829", "MH89", "MHF847", "MK646", "MU5095", "MU873", "OC192", "OD122", "OD132", "OD136", "OD158", "OD161", "OD172", "OD178", "OD181", "OD192", "OD206", "OD216", "OD232", "OD242", "OD294", "OD296", "OD307", "OD337", "OD357", "OD373", "OD387", "OD389", "OD397", "OD399", "OD503", "OD523", "OD527", "OD529", "OD541", "OD572", "OD606", "OD613", "OD615", "OD617", "OD643", "OD671", "OD673", "OD675", "OD693", "OD702", "OD752", "OD802", "OD804", "OD808", "OD821", "OD873", "PR525", "QG502", "QR844", "QR852", "QR854", "RX863", "RY6607", "SQ104", "SQ106", "SQ108", "SQ114", "SQ116", "SQ122", "SQ126", "SV834", "T5803", "TG415", "TG417", "TJ174", "TK174", "TK60", "TK62", "UL314", "UL318", "VJ1813", "VJ825", "VJ905", "VN679", "VN681", "WY821", "WY823", "XH148", "ZH327", "ZH329", "ZH9329"];
 
             let selectedReclaims = [];
             if (rcFilterVal !== 'ALL') {
@@ -1523,7 +1536,7 @@
 
             const filteredData = globalData.filter(d => 
                 (acFilter === 'ALL' || d.Aircraft === acFilter) &&
-                (flFilter === 'ALL' || d.Flight === flFilter) &&
+                (flFilter === 'ALL' || (flFilter === 'INTERNATIONAL' ? internationalFlights.includes(d.Flight) : d.Flight === flFilter)) &&
                 (rcFilterVal === 'ALL' || selectedReclaims.includes(d.Reclaim)) &&
                 (d.ATA >= startDate && d.ATA <= endDate)
             );
