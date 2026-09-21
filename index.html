@@ -515,7 +515,7 @@
         let isOverlayMode = false;
         let isATAMode = false;
 
-function toggleOverlay() {
+        function toggleOverlay() {
             isOverlayMode = !isOverlayMode;
             const btn = document.getElementById('overlayBtn');
             
@@ -523,11 +523,6 @@ function toggleOverlay() {
                 btn.style.background = '#e0f2fe';
                 btn.style.borderColor = '#0284c7';
                 btn.style.color = '#0369a1';
-                
-                // Auto-expand Data Table in Overlay Mode
-                if (!isTimelineTableExpanded) {
-                    toggleDataTable();
-                }
             } else {
                 btn.style.background = '#ffffff';
                 btn.style.borderColor = '#d1d5db';
@@ -538,6 +533,7 @@ function toggleOverlay() {
                 renderTimeline(window.currentFilteredData);
             }
         }
+
         function toggleATAMode() {
             isATAMode = !isATAMode;
             const btn = document.getElementById('ataModeBtn');
@@ -1870,6 +1866,195 @@ function toggleOverlay() {
                 return; 
             }
 
+            // --- 1. NEW OVERLAY MODE LOGIC ---
+            if (typeof isOverlayMode !== 'undefined' && isOverlayMode) {
+                Plotly.purge('chart-timeline');
+                let traces = [];
+                let datesMap = {};
+                const interval = document.getElementById('slicer-interval').value;
+                const paletteLocal = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+                
+                // Group data exclusively by Date and project time to a fixed 1-day axis
+                data.forEach(d => {
+                    let dt = new Date(d.ATA.getTime());
+                    let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+                    let timeNorm = new Date(2000, 0, 1, dt.getHours(), dt.getMinutes(), 0, 0);
+                    
+                    if (interval !== 'raw') {
+                        if (interval === 'hourly') timeNorm.setMinutes(0);
+                        else if (interval === '15min') timeNorm.setMinutes(Math.floor(timeNorm.getMinutes() / 15) * 15);
+                    }
+                    
+                    let tKey = timeNorm.getTime();
+                    if (!datesMap[dateStr]) datesMap[dateStr] = {};
+                    if (!datesMap[dateStr][tKey]) datesMap[dateStr][tKey] = 0;
+                    datesMap[dateStr][tKey] += d.BagCount;
+                });
+                
+                let step = interval === '15min' ? 900000 : 3600000;
+                let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
+                let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); 
+                
+                let globalMinT = startT;
+                let globalMaxT = endT;
+                let colorIndex = 0;
+
+                // Generate Area Chart trace for each individual date
+                for (let dateStr in datesMap) {
+                    let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
+                    if(actualTimes.length === 0) continue;
+                    
+                    let minT = Math.min(...actualTimes) - step; 
+                    let maxT = Math.max(...actualTimes) + step;   
+                    
+                    if (minT < globalMinT) globalMinT = minT;
+                    if (maxT > globalMaxT) globalMaxT = maxT;
+
+                    let xVals = [];
+                    let yVals = [];
+                    
+                    for(let t = minT; t <= maxT; t += step) {
+                        xVals.push(new Date(t));
+                        yVals.push(datesMap[dateStr][t] || 0);
+                    }
+
+                    let cColor = paletteLocal[colorIndex % paletteLocal.length];
+                    
+                    traces.push({
+                        x: xVals,
+                        y: yVals,
+                        type: 'scatter',
+                        mode: 'lines',
+                        fill: 'tozeroy',
+                        name: dateStr,
+                        hovertemplate: "<extra></extra>",
+                        opacity: 0.7,
+                        line: { shape: 'linear', width: 2, color: cColor }, 
+                        marker: { color: cColor },
+                        fillcolor: getRgba(cColor, 0.25)
+                    });
+                    colorIndex++;
+                }
+                
+                let layoutArgs = {
+                    margin: { t: 40, l: 70, r: 60, b: 40 }, 
+                    font: { family: 'Inter, sans-serif' },
+                    paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+                    hovermode: 'x', 
+                    xaxis: { 
+                        title: null, 
+                        tickformat: '%H:%M', 
+                        showgrid: true,
+                        range: [globalMinT, globalMaxT],
+                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
+                    },
+                    yaxis: { 
+                        title: { text: 'No. of Bags', standoff: 20 },
+                        showgrid: true, 
+                        rangemode: 'nonnegative' 
+                    },
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        x: 0.015,
+                        xanchor: 'left',
+                        y: 1.15,
+                        yanchor: 'bottom'
+                    }
+                };
+                
+                Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
+                
+                // Hide standard features irrelevant to Overlay Mode
+                document.getElementById('timelineTableContainer').style.display = 'none'; 
+                document.getElementById('timeline-date-range').style.display = 'none';
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
+
+                let chartDivOverlay = document.getElementById('chart-timeline');
+                
+                // Ensure the custom overlay tooltip element exists
+                if (!document.getElementById('overlay-custom-tooltip')) {
+                    let tooltip = document.createElement('div');
+                    tooltip.id = 'overlay-custom-tooltip';
+                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
+                    tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
+                }
+
+                if (chartDivOverlay.removeAllListeners) {
+                    chartDivOverlay.removeAllListeners('plotly_hover');
+                    chartDivOverlay.removeAllListeners('plotly_unhover');
+                    chartDivOverlay.removeAllListeners('plotly_restyle');
+                }
+
+                chartDivOverlay.on('plotly_hover', function(dataEvent) {
+                    if (!isOverlayMode) return;
+                    
+                    let xVal = dataEvent.points[0].x; 
+                    let timeStr = "00:00";
+                    
+                    if (typeof xVal === 'string') {
+                        let match = xVal.match(/(\d{2}:\d{2})/);
+                        if (match) timeStr = match[1];
+                    } else {
+                        let t = new Date(xVal);
+                        timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                    }
+                    
+                    let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
+                    
+                    let pts = dataEvent.points.slice().sort((a,b) => b.y - a.y);
+                    
+                    pts.forEach(pt => {
+                        let dateName = pt.data.name;
+                        let val = pt.y;
+                        let color = pt.fullData.line.color;
+                        if (val > 0) { 
+                            html += `<div class="mb-1"><span style="color:${color}; font-size:1.2em; vertical-align:middle;">■</span> <span class="text-gray-400">${dateName}:</span> <span class="font-bold text-white ml-1">${val} bags</span></div>`;
+                        }
+                    });
+
+                    if (pts.every(pt => pt.y === 0)) {
+                        html += `<div class="text-gray-500 italic">No Bags Overlay</div>`;
+                    }
+                    
+                    document.getElementById('overlay-tooltip-content').innerHTML = html;
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    let evt = dataEvent.event;
+                    
+                    tooltip.style.left = evt.pageX + 'px';
+                    tooltip.style.top = (evt.pageY - 20) + 'px';
+                    tooltip.style.transform = 'translate(-50%, -100%)';
+                    tooltip.style.opacity = '1';
+                });
+
+                chartDivOverlay.on('plotly_unhover', function() { 
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    if(tooltip) tooltip.style.opacity = '0'; 
+                });
+
+                if (!chartDivOverlay._overlayMouseAttached) {
+                    chartDivOverlay.addEventListener('mousemove', (evt) => { 
+                        if (!isOverlayMode) return;
+                        let tooltip = document.getElementById('overlay-custom-tooltip'); 
+                        if(tooltip && tooltip.style.opacity === '1') { 
+                            tooltip.style.left = evt.pageX + 'px'; 
+                            tooltip.style.top = (evt.pageY - 20) + 'px';
+                            tooltip.style.transform = 'translate(-50%, -100%)'; 
+                        } 
+                    });
+                    chartDivOverlay._overlayMouseAttached = true;
+                }
+
+                // Halt execution so standard plotting doesn't render over it
+                return; 
+            } else {
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
+            }
+            // --- END OVERLAY MODE LOGIC ---
+
             const interval = document.getElementById('slicer-interval').value;
             const pad = (n) => String(n).padStart(2, '0');
             const isDaily = (interval === 'daily');
@@ -2540,167 +2725,7 @@ function toggleOverlay() {
                 }
                 
                 renderTimeline(data);
-				
-        function renderTimeline(data) {
-            let chartDiv = document.getElementById('chart-timeline');
-            if (data.length === 0) { 
-                if (chartDiv.removeAllListeners) { 
-                    chartDiv.removeAllListeners('plotly_hover'); 
-                    chartDiv.removeAllListeners('plotly_unhover'); 
-                    chartDiv.removeAllListeners('plotly_restyle');
-                } 
-                Plotly.purge('chart-timeline'); 
-                document.getElementById('timeline-date-range').innerHTML = ''; 
-                document.getElementById('timeline-hover-details').innerHTML = '&nbsp;';
-                document.getElementById('timelineTableContainer').innerHTML = '';
-                return; 
-            }
-
-            // --- NEW OVERLAY MODE LOGIC ---
-            if (isOverlayMode) {
-                let overlayAgg = {}; 
-                let datesSet = new Set();
                 
-                // 1. Group actual filtered data by Date and Hour
-                data.forEach(d => {
-                    let dTime = new Date(d.ATA.getTime());
-                    let dateStr = `${dTime.getFullYear()}-${String(dTime.getMonth()+1).padStart(2,'0')}-${String(dTime.getDate()).padStart(2,'0')}`;
-                    let hour = dTime.getHours();
-                    
-                    datesSet.add(dateStr);
-                    if (!overlayAgg[dateStr]) overlayAgg[dateStr] = {};
-                    if (!overlayAgg[dateStr][hour]) overlayAgg[dateStr][hour] = { bags: 0 };
-                    
-                    overlayAgg[dateStr][hour].bags += d.BagCount;
-                });
-
-                // 2. Include Simulated Blocks based on selected Dates
-                const startDateStr = document.getElementById('filter-start-date').value;
-                const endDateStr = document.getElementById('filter-end-date').value;
-                let simBlocks = [];
-                
-                document.querySelectorAll('.sim-list-item').forEach(item => {
-                    const timeStr = item.dataset.time;
-                    const fNB = parseInt(item.dataset.fnb) || 0;
-                    const bNB = parseInt(item.dataset.bnb) || 0;
-                    const fWB = parseInt(item.dataset.fwb) || 0;
-                    const bWB = parseInt(item.dataset.bwb) || 0;
-                    const targetReclaim = item.dataset.reclaim || 'N/A';
-                    const bags = (fNB * bNB) + (fWB * bWB);
-                    
-                    let selectedRecs = getSelectedReclaims();
-                    if(selectedRecs.includes('ALL') || selectedRecs.includes(targetReclaim)) {
-                        if (timeStr && bags > 0) simBlocks.push({ timeStr, bags });
-                    }
-                });
-
-                if (simBlocks.length > 0 && startDateStr && endDateStr) {
-                    let currentDay = getLocalStartOfDay(startDateStr);
-                    let endDay = getLocalEndOfDay(endDateStr);
-                    while (currentDay <= endDay) {
-                        let dateStr = `${currentDay.getFullYear()}-${String(currentDay.getMonth()+1).padStart(2,'0')}-${String(currentDay.getDate()).padStart(2,'0')}`;
-                        datesSet.add(dateStr);
-                        simBlocks.forEach(b => {
-                            let [h, m] = b.timeStr.split(':').map(Number);
-                            if (!overlayAgg[dateStr]) overlayAgg[dateStr] = {};
-                            if (!overlayAgg[dateStr][h]) overlayAgg[dateStr][h] = { bags: 0 };
-                            overlayAgg[dateStr][h].bags += b.bags;
-                        });
-                        currentDay.setDate(currentDay.getDate() + 1);
-                    }
-                }
-
-                let sortedDates = Array.from(datesSet).sort();
-                let traces = [];
-                
-                // Fixed Hourly X-Axis
-                let hoursX = [];
-                for(let i = 0; i < 24; i++) {
-                    hoursX.push(`${String(i).padStart(2,'0')}:00`);
-                }
-
-                // 3. Stack Dates into Area Chart
-                sortedDates.forEach((dateStr, i) => {
-                    let yVals = [];
-                    for(let hr = 0; hr < 24; hr++) {
-                        let bags = (overlayAgg[dateStr] && overlayAgg[dateStr][hr]) ? overlayAgg[dateStr][hr].bags : 0;
-                        yVals.push(bags);
-                    }
-                    
-                    traces.push({
-                        x: hoursX,
-                        y: yVals,
-                        name: dateStr,
-                        type: 'scatter',
-                        mode: 'lines',
-                        stackgroup: 'one', // Forces the overlay stack
-                        line: { width: 2 }
-                    });
-                });
-
-                let layoutArgsOverlay = {
-                    margin: { t: 10, l: 60, r: 60, b: 60 },
-                    font: { family: 'Inter, sans-serif' },
-                    paper_bgcolor: '#ffffff',
-                    plot_bgcolor: '#ffffff',
-                    hovermode: 'x unified',
-                    xaxis: { title: 'Hour of Day', tickangle: -45 },
-                    yaxis: { title: 'Total Bags Handled', rangemode: 'nonnegative' },
-                    showlegend: true
-                };
-
-                document.getElementById('timeline-date-range').style.display = 'none';
-
-                Plotly.react('chart-timeline', traces, layoutArgsOverlay, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
-
-                // 4. Data Table Generation for Overlay
-                let tableHTML = '<table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse"><thead><tr><th class="sticky left-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Date \\ Hour</th>';
-                hoursX.forEach(hx => {
-                    tableHTML += `<th class="p-2 border text-center font-semibold text-gray-600 bg-gray-50 min-w-[55px]">${hx}</th>`;
-                });
-                tableHTML += '<th class="sticky right-0 bg-gray-100 z-20 p-2 border font-bold text-center text-gray-700 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Total</th></tr></thead><tbody>';
-
-                let grandTotal = 0;
-                sortedDates.forEach(dateStr => {
-                    tableHTML += `<tr><td class="sticky left-0 bg-white z-10 p-2 border font-bold text-blue-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">${dateStr}</td>`;
-                    let rowTotal = 0;
-                    hoursX.forEach((hx, hr) => {
-                        let bags = (overlayAgg[dateStr] && overlayAgg[dateStr][hr]) ? overlayAgg[dateStr][hr].bags : 0;
-                        rowTotal += bags;
-                        tableHTML += `<td class="p-2 border text-center hover:bg-blue-50 transition-colors">${bags > 0 ? \`<span class="font-bold text-gray-800">\${bags}</span>\` : '<span class="text-gray-300">-</span>'}</td>`;
-                    });
-                    grandTotal += rowTotal;
-                    tableHTML += `<td class="sticky right-0 bg-blue-50/50 z-10 p-2 border text-center font-extrabold text-blue-700 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">${rowTotal}</td></tr>`;
-                });
-                
-                // Table Grand Total Row
-                tableHTML += `<tr><td class="sticky left-0 bg-gray-50 z-20 p-2 border font-extrabold text-gray-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">TOTAL</td>`;
-                let colTotals = new Array(24).fill(0);
-                sortedDates.forEach(dateStr => {
-                    hoursX.forEach((hx, hr) => {
-                        colTotals[hr] += (overlayAgg[dateStr] && overlayAgg[dateStr][hr]) ? overlayAgg[dateStr][hr].bags : 0;
-                    });
-                });
-                colTotals.forEach(total => {
-                    tableHTML += `<td class="p-2 border text-center bg-gray-50">${total > 0 ? \`<span class="font-extrabold text-gray-900">\${total}</span>\` : '<span class="text-gray-300">-</span>'}</td>`;
-                });
-                tableHTML += `<td class="sticky right-0 bg-blue-100 z-20 p-2 border text-center font-extrabold text-blue-800 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">${grandTotal}</td></tr>`;
-                tableHTML += '</tbody></table>';
-                
-                document.getElementById('timelineTableContainer').innerHTML = tableHTML;
-                
-                if (isTimelineTableExpanded) {
-                    document.getElementById('timelineTableContainer').style.display = 'block';
-                }
-                
-                // Exit early to prevent standard chart rendering
-                return; 
-            }
-            // --- END OVERLAY MODE LOGIC ---
-
-            const interval = document.getElementById('slicer-interval').value;
-            const pad = (n) => String(n).padStart(2, '0');
-            // ... [Keep the rest of your original renderTimeline code starting from here]        
                 if(document.getElementById('chart-bar')) {
                     const interval = document.getElementById('slicer-interval').value;
                     const isDaily = (interval === 'daily');
