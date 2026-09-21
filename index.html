@@ -563,6 +563,9 @@
             const ataBtn = document.getElementById('ataModeBtn');
 
             if (!isTimelineTableExpanded) {
+                // 1. UPDATE STATE EARLY
+                isTimelineTableExpanded = true;
+
                 // Expand: Move to Modal
                 let placeholder = document.getElementById('timeline-placeholder');
                 if (!placeholder) {
@@ -598,6 +601,9 @@
 
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
             } else {
+                // 2. UPDATE STATE EARLY (Prevents renderTimeline from re-showing the table)
+                isTimelineTableExpanded = false;
+
                 // Collapse: Move back to Dashboard
                 const placeholder = document.getElementById('timeline-placeholder');
                 if (placeholder && placeholder.parentNode) {
@@ -633,7 +639,6 @@
 
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
             }
-            isTimelineTableExpanded = !isTimelineTableExpanded;
         }
 
         function saveTimelineAsJPEG() {
