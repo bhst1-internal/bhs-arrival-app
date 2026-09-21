@@ -267,8 +267,8 @@
                 </div>
             </div>
 
-            <!-- Combined Avg Duration -->
-            <div class="bg-orange-600 text-white p-4 rounded-lg shadow flex flex-col justify-center relative">
+            <!-- Combined Avg Duration with Shifted Max Reclaim Tooltip -->
+            <div class="bg-orange-600 text-white p-4 rounded-lg shadow text-center flex flex-col justify-center relative group cursor-help transition hover:bg-orange-700">
                 <h4 class="text-xs uppercase opacity-80 mb-2 text-center">Avg Duration (min)</h4>
                 <div class="flex flex-row relative mt-1">
                     <!-- Centered Vertical Line -->
@@ -286,20 +286,31 @@
                         <div id="kpi-firstbag" class="text-2xl font-bold">0.0</div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Max Reclaim Duration with Tooltip -->
-            <div class="bg-red-600 text-white p-4 rounded-lg shadow text-center relative group cursor-help transition hover:bg-red-700">
-                <h4 class="text-xs uppercase opacity-80">Max Reclaim Duration (min)</h4>
-                <div id="kpi-maxduration" class="text-3xl font-bold mt-1">-</div>
-                <!-- Tooltip Balloon -->
+                
+                <!-- Tooltip Balloon for Max Reclaim Duration -->
                 <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
-                    <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Flight Details</div>
+                    <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Max Reclaim Duration</div>
+                    <div id="tooltip-max-val-display" class="mb-1 text-lg font-bold text-red-400 border-b border-gray-600 pb-1 mb-2">-</div>
                     <div id="tooltip-max-flight" class="mb-1"><span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span></div>
                     <div id="tooltip-max-sta" class="mb-1"><span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div id="tooltip-max-time" class="mb-1"><span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div id="tooltip-max-ac" class="mb-1"><span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div id="tooltip-max-bags"><span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+                </div>
+            </div>
+            
+            <!-- Flight Punctuality with Tooltip -->
+            <div id="kpi-punct-container" class="bg-gray-600 text-white p-4 rounded-lg shadow text-center relative group cursor-help transition">
+                <h4 id="kpi-punct-title" class="text-xs uppercase opacity-80">Flight Punctuality</h4>
+                <div id="kpi-punctuality-flight" class="text-3xl font-bold mt-1 truncate">-</div>
+                <!-- Tooltip Balloon -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
+                    <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Punctuality Details</div>
+                    <div id="tooltip-punct-flight" class="mb-1"><span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span></div>
+                    <div id="tooltip-punct-dates" class="mb-1 max-w-[200px] whitespace-normal"><span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-punct-avgtime" class="mb-1"><span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-punct-bags"><span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span></div>
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
                 </div>
             </div>
@@ -547,6 +558,18 @@
         let activeFlightUid = null;
 
         const palette = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+
+        // --- HELPER FUNCTION FOR ATA TOOLTIP COLORS ---
+        function getAtaColorHtml(staRaw, ataDate) {
+            if (!staRaw || !ataDate) return '<span class="font-bold ml-1 text-white">-</span>';
+            let diffMins = (ataDate.getTime() - staRaw.getTime()) / 60000;
+            let colorClass = 'text-green-400';
+            if (diffMins > 10) colorClass = 'text-red-400';
+            else if (diffMins < -10) colorClass = 'text-yellow-400';
+            
+            let timeStr = formatCustomDate(ataDate).replace('&nbsp;&nbsp;', ' ');
+            return `<span class="font-bold ml-1 ${colorClass}">${timeStr}</span>`;
+        }
 
         // --- TIMELINE DATA TABLE & CONTROLS LOGIC ---
         let isTimelineTableExpanded = false;
@@ -1901,17 +1924,16 @@
             document.getElementById('kpi-bags').innerText = totalFlights > 0 ? totalBags.toLocaleString() : '0';
             document.getElementById('kpi-duration').innerText = totalFlights > 0 ? (totalBRDur / totalFlights).toFixed(1) : '0';
             document.getElementById('kpi-firstbag').innerText = totalFlights > 0 ? (totalRecDur / totalFlights).toFixed(1) : '0';
-            document.getElementById('kpi-maxduration').innerText = maxFlight ? maxFlight.ReclaimDurationNum.toFixed(1) : '0';
             document.getElementById('kpi-maxbags').innerText = maxBagFlight ? maxBagFlight.BagCount.toLocaleString() : '0';
 
             document.getElementById('tooltip-flights-nb').innerHTML = `<span class="text-gray-400">Narrow Body:</span> <span class="font-bold text-green-400 ml-1">${nbCount}</span>`;
             document.getElementById('tooltip-flights-wb').innerHTML = `<span class="text-gray-400">Wide Body:</span> <span class="font-bold text-yellow-400 ml-1">${wbCount}</span>`;
 
+            // Tooltips updates for Max Bags
             if(maxBagFlight) {
-                let maxBTimeStr = formatCustomDate(maxBagFlight.ATA).replace('&nbsp;&nbsp;', ' ');
                 document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxBagFlight.Flight}</span>`;
                 document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.STA_Display}</span>`;
-                document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">${maxBTimeStr}</span>`;
+                document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxBagFlight.STA_Raw, maxBagFlight.ATA)}`;
                 document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Aircraft}</span>`;
             } else {
                 document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
@@ -1920,20 +1942,102 @@
                 document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
             }
 
+            // Tooltips updates for Max Reclaim Duration (Now sitting inside Avg Duration Tooltip)
             if(maxFlight) {
-                let maxTimeStr = formatCustomDate(maxFlight.ATA).replace('&nbsp;&nbsp;', ' ');
-                // Rearranged order for Max Reclaim Duration Tooltip
+                document.getElementById('tooltip-max-val-display').innerText = `${maxFlight.ReclaimDurationNum.toFixed(1)} mins`;
                 document.getElementById('tooltip-max-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxFlight.Flight}</span>`;
                 document.getElementById('tooltip-max-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxFlight.STA_Display}</span>`;
-                document.getElementById('tooltip-max-time').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">${maxTimeStr}</span>`;
+                document.getElementById('tooltip-max-time').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxFlight.STA_Raw, maxFlight.ATA)}`;
                 document.getElementById('tooltip-max-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxFlight.Aircraft}</span>`;
                 document.getElementById('tooltip-max-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${maxFlight.BagCount}</span>`;
             } else {
+                document.getElementById('tooltip-max-val-display').innerText = `-`;
                 document.getElementById('tooltip-max-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
                 document.getElementById('tooltip-max-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span>`;
                 document.getElementById('tooltip-max-time').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">-</span>`;
                 document.getElementById('tooltip-max-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
                 document.getElementById('tooltip-max-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span>`;
+            }
+
+            // FLIGHT PUNCTUALITY LOGIC (New KPI)
+            const getPunctuality = (d) => {
+                if (!d.STA_Raw || !d.ATA) return 'UNKNOWN';
+                let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
+                if (diffMins > 10) return 'LATE';
+                if (diffMins < -10) return 'EARLY';
+                return 'ON-TIME';
+            };
+
+            const punctFilter = document.getElementById('slicer-punctuality').value;
+            const targetStatus = punctFilter === 'ALL' ? 'ON-TIME' : punctFilter;
+            
+            let punctColorClass = 'bg-green-600';
+            let punctHoverClass = 'hover:bg-green-700';
+            let punctTitle = 'Most On-Time Flight';
+            if (targetStatus === 'LATE') {
+                punctColorClass = 'bg-red-600'; punctHoverClass = 'hover:bg-red-700'; punctTitle = 'Most Late Flight';
+            } else if (targetStatus === 'EARLY') {
+                punctColorClass = 'bg-yellow-500'; punctHoverClass = 'hover:bg-yellow-600'; punctTitle = 'Most Early Flight';
+            }
+
+            const punctContainer = document.getElementById('kpi-punct-container');
+            punctContainer.className = `text-white p-4 rounded-lg shadow text-center relative group cursor-help transition ${punctColorClass} ${punctHoverClass}`;
+            document.getElementById('kpi-punct-title').innerText = punctTitle;
+
+            let flightCounts = {};
+            data.forEach(d => {
+                if (getPunctuality(d) === targetStatus) {
+                    if (!flightCounts[d.Flight]) flightCounts[d.Flight] = { count: 0, bags: [], diffs: [], dates: new Set() };
+                    flightCounts[d.Flight].count++;
+                    flightCounts[d.Flight].bags.push(d.BagCount);
+                    flightCounts[d.Flight].diffs.push((d.ATA.getTime() - d.STA_Raw.getTime()) / 60000);
+                    flightCounts[d.Flight].dates.add(formatCustomDate(d.ATA).split('&nbsp;')[0]); 
+                }
+            });
+
+            let mostRepeatedFlight = null;
+            let maxCount = 0;
+            for (let fl in flightCounts) {
+                if (flightCounts[fl].count > maxCount) {
+                    maxCount = flightCounts[fl].count;
+                    mostRepeatedFlight = fl;
+                }
+            }
+
+            if (mostRepeatedFlight) {
+                let stats = flightCounts[mostRepeatedFlight];
+                document.getElementById('kpi-punctuality-flight').innerText = mostRepeatedFlight;
+                
+                document.getElementById('tooltip-punct-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${mostRepeatedFlight}</span>`;
+                
+                let dateArr = Array.from(stats.dates);
+                let dateStr = dateArr.length > 3 ? dateArr.slice(0,3).join(', ') + '...' : dateArr.join(', ');
+                document.getElementById('tooltip-punct-dates').innerHTML = `<span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">${dateStr} (${stats.count}x)</span>`;
+                
+                let avgDiff = stats.diffs.reduce((a,b)=>a+b,0) / stats.diffs.length;
+                let avgStr = '';
+                if (avgDiff > 10) avgStr = `Late by ${Math.round(avgDiff)} mins`;
+                else if (avgDiff < -10) avgStr = `Early by ${Math.abs(Math.round(avgDiff))} mins`;
+                else if (avgDiff > 0) avgStr = `Late by ${Math.round(avgDiff)} mins`;
+                else if (avgDiff < 0) avgStr = `Early by ${Math.abs(Math.round(avgDiff))} mins`;
+                else avgStr = 'On Time';
+                
+                let diffColor = 'text-green-400';
+                if (avgDiff > 10) diffColor = 'text-red-400';
+                if (avgDiff < -10) diffColor = 'text-yellow-400';
+
+                document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 ${diffColor}">${avgStr}</span>`;
+                
+                let maxB = Math.max(...stats.bags);
+                let minB = Math.min(...stats.bags);
+                let bagStr = minB === maxB ? `${maxB}` : `${minB} - ${maxB}`;
+                document.getElementById('tooltip-punct-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${bagStr}</span>`;
+            } else {
+                document.getElementById('kpi-punctuality-flight').innerText = '-';
+                document.getElementById('tooltip-punct-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
+                document.getElementById('tooltip-punct-dates').innerHTML = `<span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-punct-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span>`;
             }
         }
 
