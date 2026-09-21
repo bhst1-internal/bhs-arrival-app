@@ -563,6 +563,7 @@
             const ataBtn = document.getElementById('ataModeBtn');
 
             if (!isTimelineTableExpanded) {
+                // Expand: Move to Modal
                 let placeholder = document.getElementById('timeline-placeholder');
                 if (!placeholder) {
                     placeholder = document.createElement('div');
@@ -575,16 +576,19 @@
                 
                 modalBody.appendChild(section);
                 
+                // Adjust styles for modal view
                 section.classList.remove('rounded-lg', 'shadow', 'border-t-4');
                 section.classList.add('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
                 
+                // Make chart slightly taller in expanded view
                 chartDiv.classList.remove('h-[400px]');
                 chartDiv.classList.add('h-[450px]');
 
-                tableContainer.style.display = 'block'; 
-                ataBtn.style.display = 'inline-flex'; 
-                overlay.classList.remove('hidden');     
+                tableContainer.style.display = 'block'; // Ensure it becomes visible
+                ataBtn.style.display = 'inline-flex'; // Show ATA Button
+                overlay.classList.remove('hidden');     // Show Modal
                 
+                // Update Button to Red Close State
                 btn.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                     Minimize View`;
@@ -594,12 +598,14 @@
 
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
             } else {
+                // Collapse: Move back to Dashboard
                 const placeholder = document.getElementById('timeline-placeholder');
                 if (placeholder && placeholder.parentNode) {
                     placeholder.parentNode.insertBefore(section, placeholder);
                     placeholder.style.display = 'none';
                 }
                 
+                // Revert styles
                 section.classList.add('rounded-lg', 'shadow', 'border-t-4');
                 section.classList.remove('rounded-xl', 'shadow-2xl', 'border-t-[6px]', 'min-h-full');
                 
@@ -607,9 +613,10 @@
                 chartDiv.classList.remove('h-[450px]');
 
                 overlay.classList.add('hidden');
-                tableContainer.style.display = 'none'; 
-                ataBtn.style.display = 'none'; 
+                tableContainer.style.display = 'none'; // Hide table
+                ataBtn.style.display = 'none'; // Hide ATA Button
                 
+                // Reset ATA state cleanly when closing the Data Table
                 if (isATAMode) {
                     isATAMode = false;
                     ataBtn.style.background = '#ffffff';
@@ -618,6 +625,7 @@
                     if (window.currentFilteredData) renderTimeline(window.currentFilteredData);
                 }
 
+                // Revert Button to Neutral Gray State
                 btn.innerHTML = `Data Table`;
                 btn.style.background = '#ffffff';
                 btn.style.borderColor = '#d1d5db';
@@ -636,14 +644,17 @@
             const modalBody = document.getElementById('timeline-modal-body');
             const modalWrapper = document.getElementById('timeline-expanded-modal').firstElementChild;
 
+            // Temporarily hide buttons from screenshot
             const btnOrigDisplay = btnGroup.style.display;
             btnGroup.style.display = 'none';
 
+            // Save original styles before overriding for full capture
             const origSectionWidth = section.style.width;
             const origTableOverflow = tableScrollDiv ? tableScrollDiv.style.overflowX : '';
             const origModalBodyOverflow = modalBody ? modalBody.style.overflow : '';
             const origModalWrapperOverflow = modalWrapper ? modalWrapper.style.overflow : '';
 
+            // Expand everything so html2canvas sees it without clipping
             if (isTimelineTableExpanded) {
                 if (tableScrollDiv) tableScrollDiv.style.overflowX = 'visible';
                 if (modalBody) modalBody.style.overflow = 'visible';
@@ -658,6 +669,7 @@
                 useCORS: true,
                 backgroundColor: '#ffffff'
             }).then(canvas => {
+                // Restore UI immediately
                 btnGroup.style.display = btnOrigDisplay;
                 if (isTimelineTableExpanded) {
                     if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
@@ -666,12 +678,15 @@
                     section.style.width = origSectionWidth;
                 }
 
+                // Download image
                 const link = document.createElement('a');
                 link.download = `Operational_Timeline_Export_${new Date().getTime()}.jpeg`;
                 link.href = canvas.toDataURL('image/jpeg', 0.9);
                 link.click();
             }).catch(err => {
                 console.error('Error generating image:', err);
+                
+                // Fallback restore
                 btnGroup.style.display = btnOrigDisplay;
                 if (isTimelineTableExpanded) {
                     if (tableScrollDiv) tableScrollDiv.style.overflowX = origTableOverflow;
@@ -682,6 +697,7 @@
                 alert('Failed to generate image. Please check console for details.');
             });
         }
+        // --- END TIMELINE LOGIC ---
 
         // --- AUTOMATED EXCEL FETCH LOGIC ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -691,12 +707,15 @@
 
         function loadExternalData() {
             loader.classList.remove('hidden');
+            
+            // Fetch the external Excel file dynamically with cache-busting
             fetch('data.xlsx?v=' + new Date().getTime(), { cache: 'no-store' })
                 .then(response => {
                     if (!response.ok) throw new Error("File not found");
-                    return response.arrayBuffer(); 
+                    return response.arrayBuffer(); // Convert file to binary buffer
                 })
                 .then(buffer => {
+                    // Feed the buffer directly into your existing SheetJS logic
                     processExcelData(buffer);
                 })
                 .catch(error => {
@@ -717,6 +736,7 @@
             return window.btoa(binary);
         }
 
+        // Global color mapping helper functions
         const getReclaimColor = (rc) => {
             if (!rc || rc === 'N/A' || rc === 'Unknown') return '#9ca3af';
             const allReclaims = [...new Set(globalData.map(d => d.OriginalReclaim))].filter(a => a && a.toUpperCase() !== 'UNKNOWN').sort();
@@ -798,12 +818,16 @@
 
         const formatCustomDate = (d) => {
             if (!d || typeof d.getTime !== 'function' || isNaN(d.getTime())) return '-'; 
+            
+            // Fix for Excel precision resulting in 1-minute less display.
+            // Clones the date, then rounds to nearest minute.
             let disp = new Date(d.getTime());
             if (disp.getSeconds() >= 30) {
                 disp.setMinutes(disp.getMinutes() + 1);
             }
             disp.setSeconds(0);
             disp.setMilliseconds(0);
+
             const pad = (n) => String(n).padStart(2, '0');
             return `${pad(disp.getDate())}/${pad(disp.getMonth() + 1)}/${disp.getFullYear()}&nbsp;&nbsp;${pad(disp.getHours())}:${pad(disp.getMinutes())}`;
         };
@@ -855,7 +879,7 @@
                     reader.onload = (e) => {
                         window.embeddedExcelBase64 = arrayBufferToBase64(e.target.result);
                         processExcelData(e.target.result);
-                        event.target.value = ''; 
+                        event.target.value = ''; // Reset input so identical file uploads still trigger
                     };
                     reader.readAsArrayBuffer(file);
                 }, 50);
@@ -865,8 +889,7 @@
         document.getElementById('btn-save-as').addEventListener('click', () => {
             if (!window.embeddedExcelBase64) return;
             let newHTML = pristineHTML.replace(
-                '<!-- DATA_START -->\n    <script id="embedded-excel-data">window.embeddedExcelBase64 = "";</script>\n    <!-- DATA_END -->',
-                `<!-- DATA_START -->\n    <script id="embedded-excel-data">window.embeddedExcelBase64 = "${window.embeddedExcelBase64}";</script>\n    <!-- DATA_END -->`
+
             );
             const blob = new Blob(["<!DOCTYPE html>\n" + newHTML], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
@@ -992,8 +1015,9 @@
 
             document.getElementById('slicer-interval').value = 'hourly';
 
+            // Set dates dynamically based on latest date in loaded file data
             if (globalData.length > 0) {
-                const maxAta = globalData[globalData.length - 1].ATA; 
+                const maxAta = globalData[globalData.length - 1].ATA; // The latest date available
                 document.getElementById('filter-start-date').value = formatDateForInput(maxAta);
                 document.getElementById('filter-end-date').value = formatDateForInput(maxAta);
             } else {
@@ -1206,6 +1230,7 @@
                 document.getElementById('custom-reclaim-text').innerText = 'All Reclaims';
                 document.getElementById('slicer-reclaim').value = 'ALL';
                 
+                // Dynamically reset dates to latest date in dataset
                 if (globalData.length > 0) {
                     const maxAta = globalData[globalData.length - 1].ATA;
                     document.getElementById('filter-start-date').value = formatDateForInput(maxAta);
@@ -1219,6 +1244,7 @@
                 updateDashboardWithLoader();
             });
 
+            // TIME ENTRY MASK LISTENER
             const simTimeInput = document.getElementById('sim-input-time');
             if (simTimeInput) {
                 simTimeInput.addEventListener('input', function(e) {
@@ -1585,7 +1611,6 @@
         function executeDashboardUpdate() {
             calculateSimulation(); 
 
-            // Caching DOM reads to avoid multiple document lookups
             const acFilter = document.getElementById('slicer-aircraft').value;
             const flFilter = document.getElementById('slicer-flight').value;
             const rcFilterVal = document.getElementById('slicer-reclaim').value;
@@ -1610,6 +1635,7 @@
             
             renderKPIs(filteredData);
             
+            // Yield UI Thread to let Loader Spin
             setTimeout(() => {
                 handleReclaimDetails(filteredData, rcFilterVal, selectedReclaims);
                 setTimeout(() => {
@@ -1729,7 +1755,7 @@
                 if (isSimOrShifted) {
                     textClass = 'text-orange-700 italic';
                 } else {
-                    textClass = 'text-blue-600'; 
+                    textClass = 'text-blue-600'; // Always blue for best look
                     if (d.STA_Raw && d.ATA) {
                         let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
                         if (diffMins > 10) {
@@ -1839,6 +1865,193 @@
                 document.getElementById('timelineTableContainer').innerHTML = '';
                 return; 
             }
+
+            // --- 1. NEW OVERLAY MODE LOGIC ---
+            if (typeof isOverlayMode !== 'undefined' && isOverlayMode) {
+                Plotly.purge('chart-timeline');
+                let traces = [];
+                let datesMap = {};
+                const interval = document.getElementById('slicer-interval').value;
+                const paletteLocal = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
+                
+                // Group data exclusively by Date and project time to a fixed 1-day axis
+                data.forEach(d => {
+                    let dt = new Date(d.ATA.getTime());
+                    let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+                    let timeNorm = new Date(2000, 0, 1, dt.getHours(), dt.getMinutes(), 0, 0);
+                    
+                    if (interval !== 'raw') {
+                        if (interval === 'hourly') timeNorm.setMinutes(0);
+                        else if (interval === '15min') timeNorm.setMinutes(Math.floor(timeNorm.getMinutes() / 15) * 15);
+                    }
+                    
+                    let tKey = timeNorm.getTime();
+                    if (!datesMap[dateStr]) datesMap[dateStr] = {};
+                    if (!datesMap[dateStr][tKey]) datesMap[dateStr][tKey] = 0;
+                    datesMap[dateStr][tKey] += d.BagCount;
+                });
+                
+                let step = interval === '15min' ? 900000 : 3600000;
+                let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
+                let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); 
+                
+                let globalMinT = startT;
+                let globalMaxT = endT;
+                let colorIndex = 0;
+
+                // Generate Area Chart trace for each individual date
+                for (let dateStr in datesMap) {
+                    let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
+                    if(actualTimes.length === 0) continue;
+                    
+                    let minT = Math.min(...actualTimes) - step; 
+                    let maxT = Math.max(...actualTimes) + step;   
+                    
+                    if (minT < globalMinT) globalMinT = minT;
+                    if (maxT > globalMaxT) globalMaxT = maxT;
+
+                    let xVals = [];
+                    let yVals = [];
+                    
+                    for(let t = minT; t <= maxT; t += step) {
+                        xVals.push(new Date(t));
+                        yVals.push(datesMap[dateStr][t] || 0);
+                    }
+
+                    let cColor = paletteLocal[colorIndex % paletteLocal.length];
+                    
+                    traces.push({
+                        x: xVals,
+                        y: yVals,
+                        type: 'scatter',
+                        mode: 'lines',
+                        fill: 'tozeroy',
+                        name: dateStr,
+                        hovertemplate: "<extra></extra>",
+                        opacity: 0.7,
+                        line: { shape: 'linear', width: 2, color: cColor }, 
+                        marker: { color: cColor },
+                        fillcolor: getRgba(cColor, 0.25)
+                    });
+                    colorIndex++;
+                }
+                
+                let layoutArgs = {
+                    margin: { t: 40, l: 70, r: 60, b: 40 }, 
+                    font: { family: 'Inter, sans-serif' },
+                    paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+                    hovermode: 'x', 
+                    xaxis: { 
+                        title: null, 
+                        tickformat: '%H:%M', 
+                        showgrid: true,
+                        range: [globalMinT, globalMaxT],
+                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
+                    },
+                    yaxis: { 
+                        title: { text: 'No. of Bags', standoff: 20 },
+                        showgrid: true, 
+                        rangemode: 'nonnegative' 
+                    },
+                    showlegend: true,
+                    legend: {
+                        orientation: 'h',
+                        x: 0.015,
+                        xanchor: 'left',
+                        y: 1.15,
+                        yanchor: 'bottom'
+                    }
+                };
+                
+                Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
+                
+                // REMOVED to keep Data Table visible: document.getElementById('timelineTableContainer').style.display = 'none'; 
+                document.getElementById('timeline-date-range').style.display = 'none';
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
+
+                let chartDivOverlay = document.getElementById('chart-timeline');
+                
+                // Ensure the custom overlay tooltip element exists
+                if (!document.getElementById('overlay-custom-tooltip')) {
+                    let tooltip = document.createElement('div');
+                    tooltip.id = 'overlay-custom-tooltip';
+                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
+                    tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
+                }
+
+                if (chartDivOverlay.removeAllListeners) {
+                    chartDivOverlay.removeAllListeners('plotly_hover');
+                    chartDivOverlay.removeAllListeners('plotly_unhover');
+                    chartDivOverlay.removeAllListeners('plotly_restyle');
+                }
+
+                chartDivOverlay.on('plotly_hover', function(dataEvent) {
+                    if (!isOverlayMode) return;
+                    
+                    let xVal = dataEvent.points[0].x; 
+                    let timeStr = "00:00";
+                    
+                    if (typeof xVal === 'string') {
+                        let match = xVal.match(/(\d{2}:\d{2})/);
+                        if (match) timeStr = match[1];
+                    } else {
+                        let t = new Date(xVal);
+                        timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                    }
+                    
+                    let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
+                    
+                    let pts = dataEvent.points.slice().sort((a,b) => b.y - a.y);
+                    
+                    pts.forEach(pt => {
+                        let dateName = pt.data.name;
+                        let val = pt.y;
+                        let color = pt.fullData.line.color;
+                        if (val > 0) { 
+                            html += `<div class="mb-1"><span style="color:${color}; font-size:1.2em; vertical-align:middle;">■</span> <span class="text-gray-400">${dateName}:</span> <span class="font-bold text-white ml-1">${val} bags</span></div>`;
+                        }
+                    });
+
+                    if (pts.every(pt => pt.y === 0)) {
+                        html += `<div class="text-gray-500 italic">No Bags Overlay</div>`;
+                    }
+                    
+                    document.getElementById('overlay-tooltip-content').innerHTML = html;
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    let evt = dataEvent.event;
+                    
+                    tooltip.style.left = evt.pageX + 'px';
+                    tooltip.style.top = (evt.pageY - 20) + 'px';
+                    tooltip.style.transform = 'translate(-50%, -100%)';
+                    tooltip.style.opacity = '1';
+                });
+
+                chartDivOverlay.on('plotly_unhover', function() { 
+                    let tooltip = document.getElementById('overlay-custom-tooltip');
+                    if(tooltip) tooltip.style.opacity = '0'; 
+                });
+
+                if (!chartDivOverlay._overlayMouseAttached) {
+                    chartDivOverlay.addEventListener('mousemove', (evt) => { 
+                        if (!isOverlayMode) return;
+                        let tooltip = document.getElementById('overlay-custom-tooltip'); 
+                        if(tooltip && tooltip.style.opacity === '1') { 
+                            tooltip.style.left = evt.pageX + 'px'; 
+                            tooltip.style.top = (evt.pageY - 20) + 'px';
+                            tooltip.style.transform = 'translate(-50%, -100%)'; 
+                        } 
+                    });
+                    chartDivOverlay._overlayMouseAttached = true;
+                }
+
+                // REMOVED to continue execution and generate standard HTML Data Table: return; 
+            } else {
+                let defaultHoverDetails = document.getElementById('timeline-hover-details');
+                if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
+            }
+            // --- END OVERLAY MODE LOGIC ---
 
             const interval = document.getElementById('slicer-interval').value;
             const pad = (n) => String(n).padStart(2, '0');
@@ -2240,12 +2453,12 @@
                 tableHTML += `<td class="sticky right-0 bg-blue-100 z-20 p-2 border text-center shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">${gText}</td></tr>`;
             }
             tableHTML += '</tbody></table>';
-            
-            // Set Table HTML and Ensure Proper Visibility
-            const timelineTableEl = document.getElementById('timelineTableContainer');
-            timelineTableEl.innerHTML = tableHTML;
+            document.getElementById('timelineTableContainer').innerHTML = tableHTML;
+            // --- END HTML DATA TABLE GENERATION ---
+
+            // RESTORE VISIBILITY IF IN EXPANDED VIEW
             if (isTimelineTableExpanded) {
-                timelineTableEl.style.display = 'block';
+                document.getElementById('timelineTableContainer').style.display = 'block';
             }
 
             // --- METRICS CALCULATION (Independent of plotting) ---
@@ -2373,162 +2586,8 @@
                 showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) }
             };
 
-            // --- PLOTLY BRANCHING: OVERLAY VS STANDARD ---
-            if (typeof isOverlayMode !== 'undefined' && isOverlayMode) {
-                Plotly.purge('chart-timeline');
-                let traces = [];
-                let datesMap = {};
-                const paletteLocal = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
-                
-                data.forEach(d => {
-                    let dt = new Date(d.ATA.getTime());
-                    let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-                    let timeNorm = new Date(2000, 0, 1, dt.getHours(), dt.getMinutes(), 0, 0);
-                    
-                    if (interval !== 'raw') {
-                        if (interval === 'hourly') timeNorm.setMinutes(0);
-                        else if (interval === '15min') timeNorm.setMinutes(Math.floor(timeNorm.getMinutes() / 15) * 15);
-                    }
-                    
-                    let tKey = timeNorm.getTime();
-                    if (!datesMap[dateStr]) datesMap[dateStr] = {};
-                    if (!datesMap[dateStr][tKey]) datesMap[dateStr][tKey] = 0;
-                    datesMap[dateStr][tKey] += d.BagCount;
-                });
-                
-                let step = interval === '15min' ? 900000 : 3600000;
-                let startT = new Date(2000, 0, 1, 0, 0, 0).getTime();
-                let endT = new Date(2000, 0, 2, 0, 0, 0).getTime(); 
-                
-                let globalMinT = startT;
-                let globalMaxT = endT;
-                let colorIndex = 0;
-
-                for (let dateStr in datesMap) {
-                    let actualTimes = Object.keys(datesMap[dateStr]).map(Number).filter(t => datesMap[dateStr][t] > 0);
-                    if(actualTimes.length === 0) continue;
-                    
-                    let minT = Math.min(...actualTimes) - step; 
-                    let maxT = Math.max(...actualTimes) + step;   
-                    
-                    if (minT < globalMinT) globalMinT = minT;
-                    if (maxT > globalMaxT) globalMaxT = maxT;
-
-                    let overlayXVals = [];
-                    let overlayYVals = [];
-                    
-                    for(let t = minT; t <= maxT; t += step) {
-                        overlayXVals.push(new Date(t));
-                        overlayYVals.push(datesMap[dateStr][t] || 0);
-                    }
-
-                    let cColor = paletteLocal[colorIndex % paletteLocal.length];
-                    
-                    traces.push({
-                        x: overlayXVals,
-                        y: overlayYVals,
-                        type: 'scatter',
-                        mode: 'lines',
-                        fill: 'tozeroy',
-                        name: dateStr,
-                        hovertemplate: "<extra></extra>",
-                        opacity: 0.7,
-                        line: { shape: 'linear', width: 2, color: cColor }, 
-                        marker: { color: cColor },
-                        fillcolor: getRgba(cColor, 0.25)
-                    });
-                    colorIndex++;
-                }
-                
-                let overlayLayoutArgs = {
-                    margin: { t: 40, l: 70, r: 60, b: 40 }, 
-                    font: { family: 'Inter, sans-serif' },
-                    paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
-                    hovermode: 'x', 
-                    xaxis: { 
-                        title: null, 
-                        tickformat: '%H:%M', 
-                        showgrid: true,
-                        range: [globalMinT, globalMaxT],
-                        showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1 
-                    },
-                    yaxis: { 
-                        title: { text: 'No. of Bags', standoff: 20 },
-                        showgrid: true, 
-                        rangemode: 'nonnegative' 
-                    },
-                    showlegend: true,
-                    legend: {
-                        orientation: 'h',
-                        x: 0.015,
-                        xanchor: 'left',
-                        y: 1.15,
-                        yanchor: 'bottom'
-                    }
-                };
-                
-                Plotly.react('chart-timeline', traces, overlayLayoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overlay_Timeline', scale: 2 } });
-                
-                document.getElementById('timeline-date-range').style.display = 'none';
-                let defaultHoverDetails = document.getElementById('timeline-hover-details');
-                if (defaultHoverDetails) defaultHoverDetails.style.display = 'none';
-
-                let chartDivOverlay = document.getElementById('chart-timeline');
-                
-                if (!document.getElementById('overlay-custom-tooltip')) {
-                    let tooltip = document.createElement('div');
-                    tooltip.id = 'overlay-custom-tooltip';
-                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100';
-                    tooltip.innerHTML = `<div id="overlay-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
-                    document.body.appendChild(tooltip);
-                }
-
-                if (chartDivOverlay.removeAllListeners) {
-                    chartDivOverlay.removeAllListeners('plotly_hover');
-                    chartDivOverlay.removeAllListeners('plotly_unhover');
-                    chartDivOverlay.removeAllListeners('plotly_restyle');
-                }
-
-                chartDivOverlay.on('plotly_hover', function(dataEvent) {
-                    if (!isOverlayMode) return;
-                    let xVal = dataEvent.points[0].x; 
-                    let timeStr = "00:00";
-                    if (typeof xVal === 'string') {
-                        let match = xVal.match(/(\d{2}:\d{2})/);
-                        if (match) timeStr = match[1];
-                    } else {
-                        let t = new Date(xVal);
-                        timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
-                    }
-                    let html = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Time: <span class="text-white">${timeStr}</span></div>`;
-                    let pts = dataEvent.points.slice().sort((a,b) => b.y - a.y);
-                    pts.forEach(pt => {
-                        let dateName = pt.data.name;
-                        let val = pt.y;
-                        let color = pt.fullData.line.color;
-                        if (val > 0) { html += `<div class="mb-1"><span style="color:${color}; font-size:1.2em; vertical-align:middle;">■</span> <span class="text-gray-400">${dateName}:</span> <span class="font-bold text-white ml-1">${val} bags</span></div>`; }
-                    });
-                    if (pts.every(pt => pt.y === 0)) { html += `<div class="text-gray-500 italic">No Bags Overlay</div>`; }
-                    document.getElementById('overlay-tooltip-content').innerHTML = html;
-                    let tooltip = document.getElementById('overlay-custom-tooltip');
-                    let evt = dataEvent.event;
-                    tooltip.style.left = evt.pageX + 'px';
-                    tooltip.style.top = (evt.pageY - 20) + 'px';
-                    tooltip.style.transform = 'translate(-50%, -100%)';
-                    tooltip.style.opacity = '1';
-                });
-
-                chartDivOverlay.on('plotly_unhover', function() { let tooltip = document.getElementById('overlay-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
-
-                if (!chartDivOverlay._overlayMouseAttached) {
-                    chartDivOverlay.addEventListener('mousemove', (evt) => { 
-                        if (!isOverlayMode) return;
-                        let tooltip = document.getElementById('overlay-custom-tooltip'); 
-                        if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 20) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; } 
-                    });
-                    chartDivOverlay._overlayMouseAttached = true;
-                }
-            } else {
+            // --- STANDARD CHART PLOTTING (Only if Overlay is OFF) ---
+            if (!isOverlayMode) {
                 let traces = [];
                 let chartReclaims = isMultipleReclaims ? [...uniqueReclaimsInView].reverse() : ['Total Bags'];
 
@@ -2611,22 +2670,19 @@
                 );
 
                 let dateLabelEl = document.getElementById('timeline-date-range');
-                if (dateLabelEl) dateLabelEl.style.display = 'none';
-                
-                let defaultHoverDetails = document.getElementById('timeline-hover-details');
-                if (defaultHoverDetails) defaultHoverDetails.style.display = 'block';
+                dateLabelEl.style.display = 'none';
+                dateLabelEl.innerHTML = '';
 
                 Plotly.react('chart-timeline', traces, layoutArgs, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Operational_Timeline', scale: 2 } });
 
-                let chartDivStd = document.getElementById('chart-timeline');
-                if (chartDivStd.removeAllListeners) {
-                    chartDivStd.removeAllListeners('plotly_hover');
-                    chartDivStd.removeAllListeners('plotly_unhover');
-                    chartDivStd.removeAllListeners('plotly_restyle');
+                if (chartDiv.removeAllListeners) {
+                    chartDiv.removeAllListeners('plotly_hover');
+                    chartDiv.removeAllListeners('plotly_unhover');
+                    chartDiv.removeAllListeners('plotly_restyle');
                 }
                 
-                chartDivStd.on('plotly_restyle', function(data) {
-                    let chartData = chartDivStd.data;
+                chartDiv.on('plotly_restyle', function(data) {
+                    let chartData = chartDiv.data;
                     let visibleMap = {};
                     chartData.forEach(trace => {
                         visibleMap[trace.name] = (trace.visible !== 'legendonly' && trace.visible !== false);
@@ -2634,19 +2690,22 @@
                     document.querySelectorAll('#timelineTableContainer tbody tr').forEach(tr => {
                         let rc = tr.getAttribute('data-row-reclaim');
                         if (rc && rc !== 'TOTAL') { 
-                            if (visibleMap[rc] === false) { tr.style.display = 'none'; } 
-                            else { tr.style.display = ''; }
+                            if (visibleMap[rc] === false) {
+                                tr.style.display = 'none';
+                            } else {
+                                tr.style.display = '';
+                            }
                         }
                     });
                 });
 
-                chartDivStd.on('plotly_hover', function(data) {
+                chartDiv.on('plotly_hover', function(data) {
                     if (data.points.length > 0) {
                         let pt = data.points.find(p => p.customdata !== undefined); 
                         if (pt && pt.customdata) document.getElementById('timeline-hover-details').innerHTML = pt.customdata;
                     }
                 });
-                chartDivStd.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
+                chartDiv.on('plotly_unhover', function() { document.getElementById('timeline-hover-details').innerHTML = '&nbsp;'; });
             }
         }
 
