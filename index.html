@@ -292,10 +292,10 @@
                     <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Max Reclaim Duration</div>
                     <div id="tooltip-max-val-display" class="mb-1 text-lg font-bold text-red-400 border-b border-gray-600 pb-1 mb-2">-</div>
                     <div id="tooltip-max-flight" class="mb-1"><span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span></div>
-                    <div id="tooltip-max-sta" class="mb-1"><span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-max-sta" class="mb-1"><span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxFlight?.STA_Display || '-'}</span></div>
                     <div id="tooltip-max-time" class="mb-1"><span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxFlight?.STA_Raw, maxFlight?.ATA)}</div>
-                    <div id="tooltip-max-ac" class="mb-1"><span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span></div>
-                    <div id="tooltip-max-bags"><span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">-</span></div>
+                    <div id="tooltip-max-ac" class="mb-1"><span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxFlight?.Aircraft || '-'}</span></div>
+                    <div id="tooltip-max-bags"><span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${maxFlight?.BagCount || '-'}</span></div>
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
                 </div>
             </div>
@@ -373,63 +373,15 @@
             <!-- 6-BOX GRID LAYOUT -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                <!-- NEW: 2. Max Records -->
+                <!-- UPDATED: 2. Max Records -->
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
-                        <h3 class="font-bold text-gray-700">2. Max Records</h3>
+                        <h3 class="font-bold text-gray-700">2. Max Records <span class="text-xs font-normal text-gray-500 ml-1">(All Selected Reclaims)</span></h3>
                     </div>
-                    <div class="flex-1 w-full min-h-0 relative">
-                        <!-- Max Records Content -->
-                        <div class="flex flex-col h-full gap-2">
-                            <!-- Local Reclaim Filter -->
-                            <div class="flex items-center gap-2 mb-1 shrink-0">
-                                <label class="text-[0.65rem] font-bold text-gray-500 uppercase">Filter By Reclaim:</label>
-                                <select id="max-records-reclaim-select" class="flex-1 border p-1 rounded text-xs bg-gray-50 focus:ring-blue-500 outline-none font-medium text-gray-700">
-                                    <option value="ALL">All Selected</option>
-                                    <!-- Populated via JS -->
-                                </select>
-                            </div>
-
-                            <div class="flex-1 overflow-y-auto sim-scroll pr-1 space-y-3">
-                                <!-- Set 1: Interval -->
-                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 shadow-sm relative">
-                                    <div class="absolute top-0 right-0 bg-blue-100 text-blue-800 text-[0.55rem] font-extrabold px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg uppercase" id="max-rec-interval-label">Hourly</div>
-                                    <h4 class="text-xs font-bold text-gray-700 uppercase mb-2">Max per Interval</h4>
-                                    <div class="grid grid-cols-2 gap-2 mb-2">
-                                        <div class="bg-white p-2 rounded border shadow-sm text-center">
-                                            <div class="text-[0.6rem] text-gray-500 font-semibold mb-0.5">MAX BAGS</div>
-                                            <div id="max-rec-int-bags" class="text-xl font-bold text-blue-600 leading-none">-</div>
-                                        </div>
-                                        <div class="bg-white p-2 rounded border shadow-sm text-center">
-                                            <div class="text-[0.6rem] text-gray-500 font-semibold mb-0.5">MAX FLIGHTS</div>
-                                            <div id="max-rec-int-flights" class="text-xl font-bold text-indigo-600 leading-none">-</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-center text-[0.65rem] text-gray-600 bg-white border rounded p-1">
-                                        <span class="font-bold text-gray-500">Remarks (Date & Time):</span> <br>
-                                        <span id="max-rec-int-remarks" class="font-semibold">-</span>
-                                    </div>
-                                </div>
-
-                                <!-- Set 2: Flight -->
-                                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 shadow-sm">
-                                    <h4 class="text-xs font-bold text-gray-700 uppercase mb-2">Max per Flight</h4>
-                                    <div class="grid grid-cols-2 gap-2 mb-2">
-                                        <div class="bg-white p-2 rounded border shadow-sm text-center">
-                                            <div class="text-[0.6rem] text-gray-500 font-semibold mb-0.5">MAX BAGS</div>
-                                            <div id="max-rec-flt-bags" class="text-xl font-bold text-teal-600 leading-none">-</div>
-                                        </div>
-                                        <div class="bg-white p-2 rounded border shadow-sm text-center">
-                                            <div class="text-[0.6rem] text-gray-500 font-semibold mb-0.5">FLIGHT NO.</div>
-                                            <div id="max-rec-flt-no" class="text-lg font-bold text-gray-800 leading-none mt-1 truncate">-</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-center text-[0.65rem] text-gray-600 bg-white border rounded p-1">
-                                        <span class="font-bold text-gray-500">Remarks (ATA):</span> <br>
-                                        <span id="max-rec-flt-remarks" class="font-semibold">-</span>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="flex-1 w-full min-h-0 relative bg-gray-50/50 rounded-lg p-1">
+                        <!-- Scrollable List for All Reclaims -->
+                        <div id="max-records-list" class="flex-1 overflow-y-auto sim-scroll pr-2 space-y-3 h-full pb-2">
+                            <!-- Populated via JS -->
                         </div>
                     </div>
                 </div>
@@ -1418,10 +1370,6 @@
                 }
             });
 
-            document.getElementById('max-records-reclaim-select').addEventListener('change', () => {
-                if (window.currentFilteredData) renderMaxRecords(window.currentFilteredData);
-            });
-
             document.getElementById('reset-filters').addEventListener('click', () => {
                 document.getElementById('slicer-aircraft').value = 'ALL';
                 document.getElementById('slicer-punctuality').value = 'ALL';
@@ -1814,105 +1762,134 @@
             document.getElementById('btn-punctuality-trend').addEventListener('click', togglePunctualityTrend);
         }
 
-        // Function to render Max Records Box
+        // Function to render Max Records Box (Optimized for multiple reclaims)
         function renderMaxRecords(data) {
-            const localRcSelect = document.getElementById('max-records-reclaim-select');
-            const selectedLocalRc = localRcSelect.value;
-            
-            // 1. Populate Local Dropdown based on globally filtered data
+            const container = document.getElementById('max-records-list');
+            const interval = document.getElementById('slicer-interval').value;
+            let isDaily = (interval === 'daily');
+
+            // Find all unique selected reclaims dynamically present in filtered data
             let availableReclaims = [...new Set(data.map(d => d.Reclaim))].filter(a => a && a !== 'Unknown').sort();
-            
-            // Preserve selection if possible
-            let optionsHtml = `<option value="ALL">All Selected</option>`;
-            availableReclaims.forEach(rc => {
-                optionsHtml += `<option value="${rc}">${rc}</option>`;
-            });
-            localRcSelect.innerHTML = optionsHtml;
-            if (availableReclaims.includes(selectedLocalRc) || selectedLocalRc === 'ALL') {
-                localRcSelect.value = selectedLocalRc;
-            }
 
-            // 2. Filter data for calculations
-            let localData = data;
-            if (localRcSelect.value !== 'ALL') {
-                localData = data.filter(d => d.Reclaim === localRcSelect.value);
-            }
-
-            // Reset UI if no data
-            if (localData.length === 0) {
-                document.getElementById('max-rec-int-bags').innerText = '-';
-                document.getElementById('max-rec-int-flights').innerText = '-';
-                document.getElementById('max-rec-int-remarks').innerText = '-';
-                document.getElementById('max-rec-flt-bags').innerText = '-';
-                document.getElementById('max-rec-flt-no').innerText = '-';
-                document.getElementById('max-rec-flt-remarks').innerText = '-';
+            if (data.length === 0 || availableReclaims.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 italic text-center w-full p-4 border rounded bg-white mt-2">No data available.</div>';
                 return;
             }
 
-            // --- SET 1: MAX PER INTERVAL ---
-            const interval = document.getElementById('slicer-interval').value;
-            document.getElementById('max-rec-interval-label').innerText = interval === 'raw' ? 'N/A (Raw)' : interval;
-            
-            let isDaily = (interval === 'daily');
-            let agg = {};
-            let maxBagsInterval = 0;
-            let maxIntBucket = null;
+            let html = '';
 
-            localData.forEach(d => {
-                let dTime = new Date(d.ATA.getTime());
-                if (isDaily) dTime.setHours(0, 0, 0, 0);
-                else if (interval !== 'raw') {
-                    dTime.setSeconds(0, 0);
-                    if (interval === 'hourly') dTime.setMinutes(0);
-                    else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
+            availableReclaims.forEach(rc => {
+                let localData = data.filter(d => d.Reclaim === rc);
+                if(localData.length === 0) return;
+
+                // --- CALC 1: MAX PER INTERVAL ---
+                let agg = {};
+                let maxBagsInterval = 0;
+                let maxIntBucket = null;
+
+                localData.forEach(d => {
+                    let dTime = new Date(d.ATA.getTime());
+                    if (isDaily) dTime.setHours(0, 0, 0, 0);
+                    else if (interval !== 'raw') {
+                        dTime.setSeconds(0, 0);
+                        if (interval === 'hourly') dTime.setMinutes(0);
+                        else if (interval === '15min') dTime.setMinutes(Math.floor(dTime.getMinutes() / 15) * 15);
+                    }
+                    let k = dTime.getTime();
+                    if (!agg[k]) agg[k] = { date: dTime, bags: 0, flights: 0 };
+                    agg[k].bags += d.BagCount;
+                    agg[k].flights += 1;
+                });
+
+                for (let k in agg) {
+                    if (agg[k].bags >= maxBagsInterval) {
+                        maxBagsInterval = agg[k].bags;
+                        maxIntBucket = agg[k];
+                    }
                 }
-                let k = dTime.getTime();
-                if (!agg[k]) agg[k] = { date: dTime, bags: 0, flights: 0 };
-                agg[k].bags += d.BagCount;
-                agg[k].flights += 1;
+
+                let intRemarks = '-';
+                if (maxIntBucket) {
+                    let pad = (n) => String(n).padStart(2, '0');
+                    let t = maxIntBucket.date;
+                    let dateStr = `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}`;
+                    let timeStr = isDaily ? '' : `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+                    intRemarks = isDaily ? dateStr : `${dateStr} @ ${timeStr}`;
+                }
+
+                // --- CALC 2: MAX PER FLIGHT ---
+                let maxFltBags = -1;
+                let maxFlightRec = null;
+
+                localData.forEach(d => {
+                    if (d.BagCount >= maxFltBags) {
+                        maxFltBags = d.BagCount;
+                        maxFlightRec = d;
+                    }
+                });
+
+                let fltRemarks = '-';
+                if (maxFlightRec) {
+                    fltRemarks = formatCustomDate(maxFlightRec.ATA).replace('&nbsp;&nbsp;', ' ');
+                }
+
+                let rcColor = getReclaimColor(rc);
+
+                // Build the Card HTML
+                html += `
+                <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm relative overflow-hidden">
+                    <!-- Top Right Reclaim Label -->
+                    <div class="absolute top-0 right-0 text-white text-[0.6rem] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm" style="background-color: ${rcColor}">
+                        ${rc}
+                    </div>
+                    
+                    <h4 class="text-[0.7rem] font-bold text-gray-700 uppercase mb-2 border-b pb-1">Reclaim ${rc}</h4>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Interval Max Card -->
+                        <div class="bg-blue-50/50 p-2 rounded border border-blue-100 flex flex-col justify-between">
+                            <div class="text-[0.6rem] text-blue-800 font-bold mb-1 tracking-tight">MAX / ${interval === 'raw' ? 'INTERVAL' : interval.toUpperCase()}</div>
+                            <div class="flex justify-between items-end mb-1">
+                                <div class="text-center">
+                                    <div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">BAGS</div>
+                                    <div class="text-lg font-black text-blue-600 leading-none">${maxIntBucket ? maxIntBucket.bags : '-'}</div>
+                                </div>
+                                <div class="text-center border-l border-blue-200 pl-2">
+                                    <div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">FLIGHTS</div>
+                                    <div class="text-lg font-black text-indigo-600 leading-none">${maxIntBucket ? maxIntBucket.flights : '-'}</div>
+                                </div>
+                            </div>
+                            <div class="text-[0.55rem] font-medium text-gray-500 text-center bg-white border border-gray-100 rounded mt-1 py-0.5 truncate" title="${intRemarks}">${intRemarks}</div>
+                        </div>
+
+                        <!-- Flight Max Card -->
+                        <div class="bg-teal-50/50 p-2 rounded border border-teal-100 flex flex-col justify-between">
+                            <div class="text-[0.6rem] text-teal-800 font-bold mb-1 tracking-tight">MAX / FLIGHT</div>
+                            <div class="flex justify-between items-end mb-1">
+                                <div class="text-center">
+                                    <div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">BAGS</div>
+                                    <div class="text-lg font-black text-teal-600 leading-none">${maxFlightRec ? maxFlightRec.BagCount : '-'}</div>
+                                </div>
+                                <div class="text-center w-[55px] border-l border-teal-200 pl-2">
+                                    <div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">FLIGHT</div>
+                                    <div class="text-[0.75rem] font-bold text-gray-800 leading-tight truncate" title="${maxFlightRec ? maxFlightRec.Flight : '-'}">${maxFlightRec ? maxFlightRec.Flight : '-'}</div>
+                                </div>
+                            </div>
+                            <div class="text-[0.55rem] font-medium text-gray-500 text-center bg-white border border-gray-100 rounded mt-1 py-0.5 truncate" title="${fltRemarks}">${fltRemarks}</div>
+                        </div>
+                    </div>
+                </div>
+                `;
             });
 
-            for (let k in agg) {
-                if (agg[k].bags > maxBagsInterval) {
-                    maxBagsInterval = agg[k].bags;
-                    maxIntBucket = agg[k];
-                }
-            }
-
-            if (maxIntBucket) {
-                document.getElementById('max-rec-int-bags').innerText = maxIntBucket.bags.toLocaleString();
-                document.getElementById('max-rec-int-flights').innerText = maxIntBucket.flights.toLocaleString();
-                
-                let pad = (n) => String(n).padStart(2, '0');
-                let t = maxIntBucket.date;
-                let dateStr = `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}`;
-                let timeStr = isDaily ? '' : `${pad(t.getHours())}:${pad(t.getMinutes())}`;
-                document.getElementById('max-rec-int-remarks').innerText = isDaily ? dateStr : `${dateStr} @ ${timeStr}`;
-            }
-
-            // --- SET 2: MAX PER FLIGHT ---
-            let maxFltBags = -1;
-            let maxFlightRec = null;
-
-            localData.forEach(d => {
-                if (d.BagCount > maxFltBags) {
-                    maxFltBags = d.BagCount;
-                    maxFlightRec = d;
-                }
-            });
-
-            if (maxFlightRec) {
-                document.getElementById('max-rec-flt-bags').innerText = maxFlightRec.BagCount.toLocaleString();
-                document.getElementById('max-rec-flt-no').innerText = maxFlightRec.Flight;
-                document.getElementById('max-rec-flt-remarks').innerHTML = formatCustomDate(maxFlightRec.ATA);
-            }
+            container.innerHTML = html;
         }
 
         // Function to render Flight Punctuality Table
         function renderPunctualityTable(data) {
             const tbody = document.getElementById('punctuality-tbody');
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-gray-400 italic text-center border">No flights match the current filters.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400 italic border">No flights match the current filters.</td></tr>';
                 document.getElementById('punctuality-percentages').innerHTML = '';
                 if(isTrendView) renderPunctualityTrendChart();
                 return;
@@ -2007,8 +1984,9 @@
                     let maxB = Math.max(...s.bags);
                     let bagStr = minB === maxB ? `${maxB}` : `${minB}-${maxB}`;
 
+                    // Increased the row height significantly with h-[4.2rem]
                     topFlights.push(`
-                        <tr class="${c.bg} transition-colors hover:bg-opacity-40">
+                        <tr class="${c.bg} transition-colors hover:bg-opacity-40 h-[4.2rem]">
                             <td class="p-2 border border-gray-200 text-center font-bold ${c.text}">${c.label}</td>
                             <td class="p-2 border border-gray-200 text-center font-semibold text-gray-800">${topF}</td>
                             <td class="p-2 border border-gray-200 text-center text-gray-700">${acStr}</td>
@@ -2020,7 +1998,7 @@
                     `);
                 } else {
                     topFlights.push(`
-                        <tr class="${c.bg} opacity-50">
+                        <tr class="${c.bg} opacity-50 h-[4.2rem]">
                             <td class="p-2 border border-gray-200 text-center font-bold ${c.text}">${c.label}</td>
                             <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
                             <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
@@ -2069,6 +2047,7 @@
             }
         }
 
+        // Updated Trend Chart to build a Range Bar Chart (Min vs Max minutes)
         function renderPunctualityTrendChart() {
             const startDateStr = document.getElementById('filter-start-date').value;
             const endDateStr = document.getElementById('filter-end-date').value;
@@ -2093,7 +2072,6 @@
                 try { selectedReclaims = JSON.parse(rcFilterVal); } catch(e) { selectedReclaims = [rcFilterVal]; }
             }
             
-            // Filter globalData ignoring punctuality slicer to plot correct percentages
             const trendData = globalData.filter(d => 
                 (acFilter === 'ALL' || d.Aircraft === acFilter) &&
                 (flFilter === 'ALL' || (flFilter === 'INTERNATIONAL' ? internationalFlights.includes(d.Flight) : d.Flight === flFilter)) &&
@@ -2105,7 +2083,11 @@
             let curr = new Date(targetStartDate);
             while(curr <= endT) {
                 let dStr = formatDateForInput(curr);
-                dailyStats[dStr] = { early: 0, onTime: 0, late: 0, total: 0 };
+                dailyStats[dStr] = {
+                    EARLY: { vals: [] },
+                    'ON-TIME': { vals: [] },
+                    LATE: { vals: [] }
+                };
                 curr.setDate(curr.getDate() + 1);
             }
             
@@ -2122,46 +2104,64 @@
                 if(p) {
                     let dStr = formatDateForInput(d.ATA);
                     if(dailyStats[dStr]) {
-                        if(p === 'EARLY') dailyStats[dStr].early++;
-                        else if(p === 'LATE') dailyStats[dStr].late++;
-                        else dailyStats[dStr].onTime++;
-                        dailyStats[dStr].total++;
+                        let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
+                        dailyStats[dStr][p].vals.push(diffMins);
                     }
                 }
             });
 
-            let xDates = Object.keys(dailyStats).sort();
-            let yEarly = []; let yOnTime = []; let yLate = [];
-            
-            xDates.forEach(date => {
-                let st = dailyStats[date];
-                if (st.total === 0) {
-                    yEarly.push(0); yOnTime.push(0); yLate.push(0);
-                } else {
-                    yEarly.push((st.early / st.total) * 100);
-                    yOnTime.push((st.onTime / st.total) * 100);
-                    yLate.push((st.late / st.total) * 100);
-                }
-            });
-
-            let xLabels = xDates.map(d => {
-                let dt = new Date(d);
-                return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-            });
-
-            const traces = [
-                { x: xLabels, y: yEarly, type: 'scatter', mode: 'lines+markers', name: 'Early', line: { color: '#eab308', width: 3 }, marker: { size: 6 } },
-                { x: xLabels, y: yOnTime, type: 'scatter', mode: 'lines+markers', name: 'On-Time', line: { color: '#22c55e', width: 3 }, marker: { size: 6 } },
-                { x: xLabels, y: yLate, type: 'scatter', mode: 'lines+markers', name: 'Late', line: { color: '#ef4444', width: 3 }, marker: { size: 6 } }
+            let categories = [
+                { key: 'LATE', name: 'Late', color: '#ef4444' },      // Red
+                { key: 'ON-TIME', name: 'On-Time', color: '#22c55e' },// Green
+                { key: 'EARLY', name: 'Early', color: '#eab308' }     // Yellow
             ];
 
+            let traces = [];
+
+            categories.forEach(c => {
+                let xDates = [];
+                let bases = [];
+                let heights = [];
+                let hoverTexts = [];
+
+                Object.keys(dailyStats).sort().forEach(date => {
+                    let vals = dailyStats[date][c.key].vals;
+                    if(vals.length > 0) {
+                        let min = Math.min(...vals);
+                        let max = Math.max(...vals);
+                        
+                        let dt = new Date(date);
+                        xDates.push(`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`);
+                        
+                        let h = max - min;
+                        if (h < 1.5) h = 1.5; // Enforce minimum thickness for visual clarity
+
+                        bases.push(min);
+                        heights.push(h);
+                        hoverTexts.push(`Range: ${Math.round(min)} to ${Math.round(max)} mins`);
+                    }
+                });
+
+                traces.push({
+                    x: xDates,
+                    y: heights,
+                    base: bases,
+                    type: 'bar',
+                    name: c.name,
+                    marker: { color: getRgba(c.color, 0.75), line: { color: c.color, width: 2 } },
+                    text: hoverTexts,
+                    hovertemplate: `<b>${c.name}</b><br>Date: %{x}<br>%{text}<extra></extra>`
+                });
+            });
+
             const layout = {
-                margin: { t: 10, l: 40, r: 20, b: 40 },
+                barmode: 'group', // Places Early, On-Time, Late side by side per day
+                margin: { t: 20, l: 40, r: 20, b: 40 },
                 font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
                 xaxis: { title: '', tickangle: 0, showgrid: true, tickfont: { size: 10 } },
-                yaxis: { title: 'Percentage (%)', range: [0, 100], showgrid: true, zeroline: false },
+                yaxis: { title: 'Time Difference (Mins)', showgrid: true, zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1.5 },
                 showlegend: true, legend: { orientation: 'h', y: 1.15, x: 0.5, xanchor: 'center' },
-                hovermode: 'x unified'
+                hovermode: 'closest'
             };
 
             Plotly.react('chart-punctuality-trend', traces, layout, { responsive: true, displayModeBar: false });
