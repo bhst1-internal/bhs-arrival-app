@@ -208,7 +208,8 @@
                     <div id="tooltip-mb-flight" class="mb-1"></div>
                     <div id="tooltip-mb-sta" class="mb-1"></div>
                     <div id="tooltip-mb-ata" class="mb-1"></div>
-                    <div id="tooltip-mb-ac"></div>
+                    <div id="tooltip-mb-ac" class="mb-1"></div>
+                    <div id="tooltip-mb-reclaim"></div>
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
                 </div>
             </div>
@@ -287,12 +288,36 @@
 
             <!-- 6-BOX GRID LAYOUT -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Max Records Section -->
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
                         <h3 class="font-bold text-gray-700">2. Max Records <span class="text-xs font-normal text-gray-500 ml-1">(All Selected Reclaims)</span></h3>
+                        <button id="btn-max-records-table" title="View Table" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">Table</button>
                     </div>
-                    <div class="flex-1 w-full min-h-0 relative bg-gray-50/50 rounded-lg p-1">
+                    
+                    <!-- Default List View -->
+                    <div id="max-records-default-view" class="flex-1 w-full min-h-0 relative bg-gray-50/50 rounded-lg p-1">
                         <div id="max-records-list" class="flex-1 overflow-y-auto sim-scroll pr-2 space-y-3 h-full pb-2"></div>
+                    </div>
+                    
+                    <!-- Expanded Table View -->
+                    <div id="max-records-table-view" class="flex-1 w-full min-h-0 hidden relative flex-col">
+                        <div class="w-full relative overflow-y-auto table-scroll border rounded shadow-[0_0_5px_rgba(0,0,0,0.05)] h-full">
+                            <table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Reclaim</th>
+                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Bags</th>
+                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Flights</th>
+                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Time</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flt Bags</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flight No.</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flt ATA</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="max-records-tbody" class="text-gray-800 font-medium"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -498,6 +523,7 @@
         let isTimelineTableExpanded = false;
         let isOverlayMode = false;
         let isATAMode = false;
+        let isMaxRecordsTableView = false;
 
         function toggleOverlay() {
             isOverlayMode = !isOverlayMode;
@@ -569,6 +595,29 @@
                 btn.innerHTML = `Data Table`;
                 btn.style.background = '#ffffff'; btn.style.borderColor = '#d1d5db'; btn.style.color = '#4b5563';
                 setTimeout(() => { Plotly.Plots.resize('chart-timeline'); }, 150);
+            }
+        }
+
+        function toggleMaxRecordsTable() {
+            isMaxRecordsTableView = !isMaxRecordsTableView;
+            const btn = document.getElementById('btn-max-records-table');
+            const defaultView = document.getElementById('max-records-default-view');
+            const tableView = document.getElementById('max-records-table-view');
+
+            if (isMaxRecordsTableView) {
+                defaultView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                tableView.classList.add('flex');
+                
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg> Minimize View`;
+                btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#b91c1c';
+            } else {
+                defaultView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                tableView.classList.remove('flex');
+                
+                btn.innerHTML = `Table`; 
+                btn.style.background = '#ffffff'; btn.style.borderColor = '#d1d5db'; btn.style.color = '#4b5563';
             }
         }
 
@@ -1161,6 +1210,7 @@
             slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); slider.scrollLeft = scrollLeft - ((e.pageX - slider.offsetLeft) - startX) * 1.5; });
             
             document.getElementById('btn-punctuality-trend').addEventListener('click', togglePunctualityTrend);
+            document.getElementById('btn-max-records-table').addEventListener('click', toggleMaxRecordsTable);
         }
 
         function renderMaxRecords(data) {
@@ -1169,14 +1219,18 @@
             
             if (data.length === 0 || availableReclaims.length === 0) {
                 container.innerHTML = '<div class="text-gray-400 italic text-center w-full p-4 border rounded bg-white mt-2">No data available.</div>';
+                document.getElementById('max-records-tbody').innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-400 italic border">No data available.</td></tr>';
                 return;
             }
 
             let groupedByReclaim = {};
             data.forEach(d => { if(d.Reclaim !== 'Unknown') { if(!groupedByReclaim[d.Reclaim]) groupedByReclaim[d.Reclaim] = []; groupedByReclaim[d.Reclaim].push(d); } });
 
-            container.innerHTML = availableReclaims.map(rc => {
-                let localData = groupedByReclaim[rc] || []; if(localData.length === 0) return '';
+            let listHTML = '';
+            let tableHTML = '';
+
+            availableReclaims.forEach(rc => {
+                let localData = groupedByReclaim[rc] || []; if(localData.length === 0) return;
                 let agg = {}, maxBagsInterval = 0, maxIntBucket = null, maxFltBags = -1, maxFlightRec = null;
 
                 localData.forEach(d => {
@@ -1195,11 +1249,11 @@
                 let intRemarks = '-', fltRemarks = '-';
                 if (maxIntBucket) {
                     let t = maxIntBucket.date, pad = (n) => String(n).padStart(2, '0');
-                    intRemarks = isDaily ? `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}` : `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()} @ ${pad(t.getHours())}:${pad(t.getMinutes())}`;
+                    intRemarks = isDaily ? `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()}` : `${pad(t.getDate())}/${pad(t.getMonth()+1)}/${t.getFullYear()} ${pad(t.getHours())}:${pad(t.getMinutes())}`;
                 }
-                if (maxFlightRec) fltRemarks = formatCustomDate(maxFlightRec.ATA).replace('&nbsp;&nbsp;', ' ');
+                if (maxFlightRec) fltRemarks = "ATA: " + formatCustomDate(maxFlightRec.ATA).replace('&nbsp;&nbsp;', ' ');
 
-                return `
+                listHTML += `
                 <div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm relative overflow-hidden">
                     <div class="absolute top-0 right-0 text-white text-[0.6rem] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm" style="background-color: ${getReclaimColor(rc)}">${rc}</div>
                     <h4 class="text-[0.7rem] font-bold text-gray-700 uppercase mb-2 border-b pb-1">Reclaim ${rc}</h4>
@@ -1211,12 +1265,26 @@
                         </div>
                         <div class="bg-teal-50/50 p-2 rounded border border-teal-100 flex flex-col justify-between">
                             <div class="text-[0.6rem] text-teal-800 font-bold mb-1 tracking-tight">MAX / FLIGHT</div>
-                            <div class="flex justify-between items-end mb-1"><div class="text-center"><div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">BAGS</div><div class="text-lg font-black text-teal-600 leading-none">${maxFlightRec ? maxFlightRec.BagCount : '-'}</div></div><div class="text-center w-[55px] border-l border-teal-200 pl-2"><div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">FLIGHT</div><div class="text-[0.75rem] font-bold text-gray-800 leading-tight truncate" title="${maxFlightRec ? maxFlightRec.Flight : '-'}">${maxFlightRec ? maxFlightRec.Flight : '-'}</div></div></div>
+                            <div class="flex justify-between items-end mb-1"><div class="text-center"><div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">BAGS</div><div class="text-lg font-black text-teal-600 leading-none">${maxFlightRec ? maxFlightRec.BagCount : '-'}</div></div><div class="text-center min-w-[75px] max-w-[100px] border-l border-teal-200 pl-2"><div class="text-[0.55rem] text-gray-500 font-semibold leading-tight">FLIGHT</div><div class="text-[0.75rem] font-bold text-gray-800 leading-tight truncate" title="${maxFlightRec ? maxFlightRec.Flight : '-'}">${maxFlightRec ? maxFlightRec.Flight : '-'}</div></div></div>
                             <div class="text-[0.55rem] font-medium text-gray-500 text-center bg-white border border-gray-100 rounded mt-1 py-0.5 truncate" title="${fltRemarks}">${fltRemarks}</div>
                         </div>
                     </div>
                 </div>`;
-            }).join('');
+
+                tableHTML += `
+                <tr class="hover:bg-gray-50 transition-colors">
+                    <td class="p-2 border border-gray-200 text-center font-extrabold" style="color: ${getReclaimColor(rc)}">${rc}</td>
+                    <td class="p-2 border border-gray-200 text-center font-bold text-blue-800 bg-blue-50/30">${maxIntBucket ? maxIntBucket.bags : '-'}</td>
+                    <td class="p-2 border border-gray-200 text-center font-bold text-blue-700 bg-blue-50/30">${maxIntBucket ? maxIntBucket.flights : '-'}</td>
+                    <td class="p-2 border border-gray-200 text-center font-medium text-gray-600 bg-blue-50/30 text-[0.65rem]">${intRemarks}</td>
+                    <td class="p-2 border border-gray-200 text-center font-bold text-teal-800 bg-teal-50/30">${maxFlightRec ? maxFlightRec.BagCount : '-'}</td>
+                    <td class="p-2 border border-gray-200 text-center font-bold text-teal-700 bg-teal-50/30">${maxFlightRec ? maxFlightRec.Flight : '-'}</td>
+                    <td class="p-2 border border-gray-200 text-center font-medium text-gray-600 bg-teal-50/30 text-[0.65rem]">${fltRemarks.replace('ATA: ', '')}</td>
+                </tr>`;
+            });
+
+            container.innerHTML = listHTML;
+            document.getElementById('max-records-tbody').innerHTML = tableHTML;
         }
 
         function renderPunctualityTable(data) {
@@ -1434,6 +1502,13 @@
                 document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.STA_Display}</span>`;
                 document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxBagFlight.STA_Raw, maxBagFlight.ATA)}`;
                 document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Aircraft}</span>`;
+                document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Reclaim}</span>`;
+            } else {
+                document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
+                document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
+                document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">-</span>`;
             }
 
             if(maxFlight) {
