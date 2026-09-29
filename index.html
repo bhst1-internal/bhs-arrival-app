@@ -303,16 +303,16 @@
                     <!-- Expanded Table View -->
                     <div id="max-records-table-view" class="flex-1 w-full min-h-0 hidden relative flex-col">
                         <div class="w-full relative overflow-y-auto table-scroll border rounded shadow-[0_0_5px_rgba(0,0,0,0.05)] h-full">
-                            <table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse">
+                            <table class="w-full min-h-full text-xs text-left whitespace-nowrap bg-white border-collapse">
                                 <thead>
                                     <tr>
                                         <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Reclaim</th>
-                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Bags</th>
-                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Flights</th>
-                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Int. Time</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flt Bags</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flight No.</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flt ATA</th>
+                                        <th id="th-int-bags" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Bags/Hour</th>
+                                        <th id="th-int-flights" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Flights/Hour</th>
+                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Event Time</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Bags/Flight</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flight</th>
+                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">ATA</th>
                                     </tr>
                                 </thead>
                                 <tbody id="max-records-tbody" class="text-gray-800 font-medium"></tbody>
@@ -1215,6 +1215,10 @@
 
         function renderMaxRecords(data) {
             const container = document.getElementById('max-records-list'), interval = document.getElementById('slicer-interval').value, isDaily = (interval === 'daily');
+            let intLabel = interval === 'daily' ? 'Day' : (interval === '15min' ? '15m' : (interval === 'hourly' ? 'Hour' : 'Int.'));
+            document.getElementById('th-int-bags').innerText = `Bags/${intLabel}`;
+            document.getElementById('th-int-flights').innerText = `Flights/${intLabel}`;
+
             let availableReclaims = [...new Set(data.map(d => d.Reclaim))].filter(a => a && a !== 'Unknown').sort();
             
             if (data.length === 0 || availableReclaims.length === 0) {
