@@ -109,6 +109,17 @@
         <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
     </div>
 
+    <!-- MAX RECORDS & TREND TOOLTIPS -->
+    <div id="max-records-custom-tooltip" class="fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100 transform -translate-x-1/2 -translate-y-full mt-[-15px]">
+        <div id="max-records-tooltip-content"></div>
+        <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+    </div>
+
+    <div id="trend-custom-tooltip" class="fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100 transform -translate-x-1/2 -translate-y-full mt-[-15px]">
+        <div id="trend-tooltip-content"></div>
+        <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+    </div>
+
     <div class="max-w-7xl mx-auto p-4 space-y-6">
         
         <!-- Header & Upload -->
@@ -295,7 +306,7 @@
                         <button id="btn-max-records-toggle" title="View Details" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">Details</button>
                     </div>
                     
-                    <!-- Table View (Now Default) -->
+                    <!-- Table View (Default) -->
                     <div id="max-records-table-view" class="flex-1 w-full min-h-0 flex relative flex-col">
                         <div class="w-full relative overflow-y-auto table-scroll border rounded shadow-[0_0_5px_rgba(0,0,0,0.05)] h-full">
                             <table class="w-full min-h-full text-xs text-left whitespace-nowrap bg-white border-collapse">
@@ -310,12 +321,12 @@
                                         <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">ATA</th>
                                     </tr>
                                 </thead>
-                                <tbody id="max-records-tbody" class="text-gray-800 font-medium"></tbody>
+                                <tbody id="max-records-tbody" class="text-gray-800 font-medium relative"></tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- List View (Now Hidden Details) -->
+                    <!-- List View -->
                     <div id="max-records-list-view" class="flex-1 w-full min-h-0 hidden relative bg-gray-50/50 rounded-lg p-1">
                         <div id="max-records-list" class="flex-1 overflow-y-auto sim-scroll pr-2 space-y-3 h-full pb-2"></div>
                     </div>
@@ -346,8 +357,24 @@
                         </div>
                         <div id="punctuality-percentages" class="mt-3 grid grid-cols-3 gap-2 flex-1 min-h-0"></div>
                     </div>
-                    <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col">
-                        <div id="chart-punctuality-trend" class="flex-1 w-full"></div>
+
+                    <!-- Trend View Redesigned -->
+                    <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
+                        <!-- Early Row -->
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[90px] max-h-[130px] w-full">
+                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
+                            <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
+                        </div>
+                        <!-- On-Time Row -->
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[90px] max-h-[130px] w-full">
+                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
+                            <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
+                        </div>
+                        <!-- Late Row -->
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[90px] max-h-[130px] w-full">
+                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
+                            <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -1175,7 +1202,7 @@
             document.addEventListener('mouseover', (e) => {
                 let target = e.target.closest('.formula-action-trigger'); if(!target) return;
                 let type = target.getAttribute('data-type');
-                if(type === 'br') document.getElementById('formula-tooltip-content').innerHTML = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Peak BR Formula</div><div class="mb-1 text-gray-400">1. Required Time = <span class="font-bold text-white">Peak Bags × Time/Bag</span></div><div class="mb-1 text-gray-400">2. BR Window = <span class="font-bold text-white">Last Bag BR - First Bag BR</span></div><div class="text-gray-400 mt-2 pt-1.5 border-t border-gray-600">Utilization = <span class="font-bold text-teal-400">(Req. Time ÷ BR Window) × 100%</span></div>`;
+                if(type === 'br') document.getElementById('formula-tooltip-content').innerHTML = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Peak BR Formula</div><div class="mb-1 text-gray-400">1. Required Time = <span class="font-bold text-white">Peak Peak Bags × Time/Bag</span></div><div class="mb-1 text-gray-400">2. BR Window = <span class="font-bold text-white">Last Bag BR - First Bag BR</span></div><div class="text-gray-400 mt-2 pt-1.5 border-t border-gray-600">Utilization = <span class="font-bold text-teal-400">(Req. Time ÷ BR Window) × 100%</span></div>`;
                 else if (type === 'rec') document.getElementById('formula-tooltip-content').innerHTML = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Peak Reclaim Formula</div><div class="mb-1 text-gray-400">1. Required Time = <span class="font-bold text-white">Peak Bags × Time/Bag</span></div><div class="mb-1 text-gray-400">2. Reclaim Window = <span class="font-bold text-white">Last Bag CL - First Bag CL</span></div><div class="text-gray-400 mt-2 pt-1.5 border-t border-gray-600">Utilization = <span class="font-bold text-purple-400">(Req. Time ÷ Rec. Window) × 100%</span></div>`;
                 document.getElementById('formula-custom-tooltip').style.opacity = '1';
             });
@@ -1191,6 +1218,27 @@
                 });
                 timelineContainer.addEventListener('mousemove', (e) => { if(tlTooltip.style.opacity === '1') { tlTooltip.style.left = e.clientX + 'px'; tlTooltip.style.top = (e.clientY - 15) + 'px'; } });
                 timelineContainer.addEventListener('mouseout', (e) => { if(e.target.closest('.timeline-cell-hover')) tlTooltip.style.opacity = '0'; });
+            }
+
+            const maxRecordsTbody = document.getElementById('max-records-tbody'), maxRecordsTooltip = document.getElementById('max-records-custom-tooltip'), maxRecordsContent = document.getElementById('max-records-tooltip-content');
+            if(maxRecordsTbody) {
+                maxRecordsTbody.addEventListener('mouseover', (e) => {
+                    let row = e.target.closest('.max-records-table-row');
+                    if(!row) return;
+                    let rc = row.dataset.rc, intbags = row.dataset.intbags, intflt = row.dataset.intflt, inttime = row.dataset.inttime, fltbags = row.dataset.fltbags, flt = row.dataset.flt, fltata = row.dataset.fltata;
+                    maxRecordsContent.innerHTML = `
+                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Reclaim: <span class="text-white">${rc}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Peak Int. Bags:</span> <span class="font-bold text-blue-300 ml-1">${intbags}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Peak Int. Flights:</span> <span class="font-bold text-blue-300 ml-1">${intflt}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Event Time:</span> <span class="font-bold text-white ml-1">${inttime}</span></div>
+                        <div class="mt-2 border-t border-gray-600 pt-1.5 mb-1"><span class="text-gray-400">Max Flight:</span> <span class="font-bold text-teal-300 ml-1">${flt}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Flight Bags:</span> <span class="font-bold text-teal-300 ml-1">${fltbags}</span></div>
+                        <div><span class="text-gray-400">ATA:</span> <span class="font-bold text-white ml-1">${fltata}</span></div>
+                    `;
+                    maxRecordsTooltip.style.opacity = '1';
+                });
+                maxRecordsTbody.addEventListener('mousemove', (e) => { if(maxRecordsTooltip.style.opacity === '1') { maxRecordsTooltip.style.left = e.clientX + 'px'; maxRecordsTooltip.style.top = (e.clientY - 15) + 'px'; } });
+                maxRecordsTbody.addEventListener('mouseout', (e) => { if(e.target.closest('.max-records-table-row')) maxRecordsTooltip.style.opacity = '0'; });
             }
 
             const btnExport = document.getElementById('btn-export-excel');
@@ -1283,7 +1331,7 @@
                 </div>`;
 
                 tableHTML += `
-                <tr class="hover:bg-gray-50 transition-colors">
+                <tr class="hover:bg-gray-50 transition-colors max-records-table-row cursor-help" data-rc="${rc}" data-intbags="${maxIntBucket ? maxIntBucket.bags : '-'}" data-intflt="${maxIntBucket ? maxIntBucket.flights : '-'}" data-inttime="${intRemarks}" data-fltbags="${maxFlightRec ? maxFlightRec.BagCount : '-'}" data-flt="${maxFlightRec ? maxFlightRec.Flight : '-'}" data-fltata="${fltRemarks.replace('ATA: ', '')}">
                     <td class="px-1 py-2 border border-gray-200 text-center font-extrabold w-[60px]" style="color: ${getReclaimColor(rc)}">${rc}</td>
                     <td class="p-2 border border-gray-200 text-center font-bold text-blue-800 bg-blue-50/30">${maxIntBucket ? maxIntBucket.bags : '-'}</td>
                     <td class="p-2 border border-gray-200 text-center font-bold text-blue-700 bg-blue-50/30">${maxIntBucket ? maxIntBucket.flights : '-'}</td>
@@ -1379,73 +1427,73 @@
                 dailyStats[formatDateForInput(curr)] = { total: 0, EARLY: { vals: [] }, 'ON-TIME': { vals: [] }, LATE: { vals: [] } };
             }
 
-            let allDiffs = [];
             trendData.forEach(d => { 
                 if(d.Punctuality !== 'UNKNOWN' && dailyStats[formatDateForInput(d.ATA)]) {
                     dailyStats[formatDateForInput(d.ATA)].total++;
-                    dailyStats[formatDateForInput(d.ATA)][d.Punctuality].vals.push(d.PunctDiffMins);
-                    allDiffs.push(d.PunctDiffMins);
+                    let mappedVal = d.PunctDiffMins;
+                    if(d.Punctuality === 'EARLY') mappedVal = Math.abs(d.PunctDiffMins); 
+                    dailyStats[formatDateForInput(d.ATA)][d.Punctuality].vals.push(mappedVal); 
                 }
             });
 
-            let globalMin = allDiffs.length > 0 ? Math.min(...allDiffs) : -20;
-            let globalMax = allDiffs.length > 0 ? Math.max(...allDiffs) : 20;
-            globalMin = Math.min(globalMin - 5, -15);
-            globalMax = Math.max(globalMax + 5, 15);
-
-            let traces = [];
-            let sortedDates = Object.keys(dailyStats).sort();
-            
-            [ { key: 'EARLY', name: 'Early', color: '#eab308' }, { key: 'ON-TIME', name: 'On-Time', color: '#22c55e' }, { key: 'LATE', name: 'Late', color: '#ef4444' } ].forEach(c => {
-                let xDates = [], bases = [], heights = [], hoverTexts = [];
-                
-                sortedDates.forEach(date => {
-                    let st = dailyStats[date];
-                    let vals = st[c.key].vals;
-                    let dt = new Date(date);
+            const drawRangeChart = (divId, catKey, catName, catColor) => {
+                let xDates = [], bases = [], heights = [], hoverData = [], maxDeviation = 0;
+                Object.keys(dailyStats).sort().forEach(date => {
+                    let st = dailyStats[date], vals = st[catKey].vals, dt = new Date(date);
                     xDates.push(`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`);
-                    
                     if(vals.length > 0) {
                         let min = Math.min(...vals), max = Math.max(...vals);
-                        let height = max - min, base = min;
-                        if(height < 1.5) { height = 1.5; base = min - 0.75; }
-                        
-                        bases.push(base);
-                        heights.push(height);
-                        let avg = vals.reduce((a,b)=>a+b,0)/vals.length;
-                        hoverTexts.push(`<b>${c.name}</b><br>${vals.length} flights<br>Range: ${Math.round(min)} to ${Math.round(max)} mins<br>Avg: ${Math.round(avg)} mins`);
+                        if (max > maxDeviation) maxDeviation = max;
+                        bases.push(min); heights.push(Math.max(max - min, 1.5)); 
+                        hoverData.push({ min: Math.round(min), max: Math.round(max), avg: Math.round(vals.reduce((a,b)=>a+b,0)/vals.length), count: vals.length });
                     } else {
-                        bases.push(null);
-                        heights.push(null);
-                        hoverTexts.push('');
+                        bases.push(null); heights.push(null); hoverData.push(null);
                     }
                 });
-                
-                traces.push({
-                    x: xDates, y: heights, base: bases, type: 'bar', name: c.name, 
-                    marker: { color: getRgba(c.color, 0.8), line: { color: c.color, width: 1.5 } }, 
-                    text: hoverTexts, hovertemplate: `%{text}<extra></extra>` 
-                });
-            });
 
-            Plotly.react('chart-punctuality-trend', traces, { 
-                barmode: 'group', bargap: 0.15, margin: { t: 20, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', 
-                xaxis: { title: '', tickfont: { size: 10 } }, 
-                yaxis: { title: 'Deviation from STA (Mins)', range: [globalMax, globalMin], showgrid: false, zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1.5 }, 
-                shapes: [
-                    { type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: globalMin, y1: -10, fillcolor: 'rgba(234, 179, 8, 0.1)', line: {width: 0}, layer: 'below' },
-                    { type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: -10, y1: 10, fillcolor: 'rgba(34, 197, 94, 0.1)', line: {width: 0}, layer: 'below' },
-                    { type: 'rect', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 10, y1: globalMax, fillcolor: 'rgba(239, 68, 68, 0.1)', line: {width: 0}, layer: 'below' },
-                    { type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: -10, y1: -10, line: {color: '#ca8a04', width: 1, dash: 'dash'}, layer: 'above' },
-                    { type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 10, y1: 10, line: {color: '#dc2626', width: 1, dash: 'dash'}, layer: 'above' }
-                ],
-                annotations: [
-                    { xref: 'paper', x: 0.01, xanchor: 'left', yref: 'y', y: (globalMin - 10) / 2, text: '<b>EARLY</b>', showarrow: false, font: {color: '#ca8a04', size: 12}, opacity: 0.6 },
-                    { xref: 'paper', x: 0.01, xanchor: 'left', yref: 'y', y: 0, text: '<b>ON-TIME</b>', showarrow: false, font: {color: '#16a34a', size: 12}, opacity: 0.6 },
-                    { xref: 'paper', x: 0.01, xanchor: 'left', yref: 'y', y: (globalMax + 10) / 2, text: '<b>LATE</b>', showarrow: false, font: {color: '#dc2626', size: 12}, opacity: 0.6 }
-                ],
-                showlegend: true, legend: { orientation: 'h', y: 1.15, x: 0.5, xanchor: 'center' }, hovermode: 'closest' 
-            }, { responsive: true, displayModeBar: false });
+                let trace = { x: xDates, y: heights, base: bases, type: 'bar', marker: { color: getRgba(catColor, 0.7), line: { color: catColor, width: 1.5 } }, hoverinfo: 'none' };
+                let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
+                
+                let layout = { 
+                    margin: { t: 5, b: 20, l: 35, r: 10 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 
+                    xaxis: { showgrid: false, tickfont: { size: 9 } }, 
+                    yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', tickfont: { size: 9 }, zeroline: false }, 
+                    showlegend: false 
+                };
+
+                let chartEl = document.getElementById(divId);
+                Plotly.react(divId, [trace], layout, { responsive: true, displayModeBar: false });
+                
+                if (!document.getElementById('trend-custom-tooltip')) {
+                    let tooltip = document.createElement('div'); tooltip.id = 'trend-custom-tooltip';
+                    tooltip.className = 'fixed px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[300] shadow-xl text-left border border-gray-700 transition-opacity duration-100 transform -translate-x-1/2 -translate-y-full mt-[-15px]';
+                    tooltip.innerHTML = `<div id="trend-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`;
+                    document.body.appendChild(tooltip);
+                }
+
+                if (chartEl.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartEl.removeAllListeners(e)); }
+                chartEl.on('plotly_hover', function(data) {
+                    let pt = data.points[0], idx = pt.pointIndex, hd = hoverData[idx];
+                    if(!hd) return;
+                    let colorClass = catKey === 'LATE' ? 'text-red-400' : (catKey === 'EARLY' ? 'text-yellow-400' : 'text-green-400');
+                    let timeContext = catKey === 'EARLY' ? 'Mins Early' : (catKey === 'LATE' ? 'Mins Late' : 'Mins Diff');
+                    document.getElementById('trend-tooltip-content').innerHTML = `
+                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">${catName} Trend Details</div>
+                        <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-white ml-1">${pt.x}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Flights:</span> <span class="font-bold text-white ml-1">${hd.count}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Range:</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
+                        <div><span class="text-gray-400">Average:</span> <span class="font-bold text-white ml-1">${hd.avg}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
+                    `;
+                    let tooltip = document.getElementById('trend-custom-tooltip');
+                    tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
+                });
+                chartEl.on('plotly_unhover', function() { document.getElementById('trend-custom-tooltip').style.opacity = '0'; });
+                if (!chartEl._customMouseAttached) { chartEl.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('trend-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = evt.pageY + 'px'; } }); chartEl._customMouseAttached = true; }
+            };
+
+            drawRangeChart('chart-trend-early', 'EARLY', 'Early', '#eab308');
+            drawRangeChart('chart-trend-ontime', 'ON-TIME', 'On-Time', '#22c55e');
+            drawRangeChart('chart-trend-late', 'LATE', 'Late', '#ef4444');
         }
 
         function executeDashboardUpdate() {
