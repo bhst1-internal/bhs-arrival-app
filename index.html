@@ -292,21 +292,16 @@
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
                         <h3 class="font-bold text-gray-700">2. Max Records <span class="text-xs font-normal text-gray-500 ml-1">(All Selected Reclaims)</span></h3>
-                        <button id="btn-max-records-table" title="View Table" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">Table</button>
+                        <button id="btn-max-records-toggle" title="View Details" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">Details</button>
                     </div>
                     
-                    <!-- Default List View -->
-                    <div id="max-records-default-view" class="flex-1 w-full min-h-0 relative bg-gray-50/50 rounded-lg p-1">
-                        <div id="max-records-list" class="flex-1 overflow-y-auto sim-scroll pr-2 space-y-3 h-full pb-2"></div>
-                    </div>
-                    
-                    <!-- Expanded Table View -->
-                    <div id="max-records-table-view" class="flex-1 w-full min-h-0 hidden relative flex-col">
+                    <!-- Table View (Now Default) -->
+                    <div id="max-records-table-view" class="flex-1 w-full min-h-0 flex relative flex-col">
                         <div class="w-full relative overflow-y-auto table-scroll border rounded shadow-[0_0_5px_rgba(0,0,0,0.05)] h-full">
                             <table class="w-full min-h-full text-xs text-left whitespace-nowrap bg-white border-collapse">
                                 <thead>
                                     <tr>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Reclaim</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-1 border font-bold text-gray-700 text-center w-[60px]">Reclaim</th>
                                         <th id="th-int-bags" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Bags/Hour</th>
                                         <th id="th-int-flights" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Flights/Hour</th>
                                         <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Event Time</th>
@@ -318,6 +313,11 @@
                                 <tbody id="max-records-tbody" class="text-gray-800 font-medium"></tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- List View (Now Hidden Details) -->
+                    <div id="max-records-list-view" class="flex-1 w-full min-h-0 hidden relative bg-gray-50/50 rounded-lg p-1">
+                        <div id="max-records-list" class="flex-1 overflow-y-auto sim-scroll pr-2 space-y-3 h-full pb-2"></div>
                     </div>
                 </div>
 
@@ -523,7 +523,7 @@
         let isTimelineTableExpanded = false;
         let isOverlayMode = false;
         let isATAMode = false;
-        let isMaxRecordsTableView = false;
+        let isMaxRecordsDetailsView = false;
 
         function toggleOverlay() {
             isOverlayMode = !isOverlayMode;
@@ -599,24 +599,26 @@
         }
 
         function toggleMaxRecordsTable() {
-            isMaxRecordsTableView = !isMaxRecordsTableView;
-            const btn = document.getElementById('btn-max-records-table');
-            const defaultView = document.getElementById('max-records-default-view');
+            isMaxRecordsDetailsView = !isMaxRecordsDetailsView;
+            const btn = document.getElementById('btn-max-records-toggle');
+            const listView = document.getElementById('max-records-list-view');
             const tableView = document.getElementById('max-records-table-view');
 
-            if (isMaxRecordsTableView) {
-                defaultView.classList.add('hidden');
-                tableView.classList.remove('hidden');
-                tableView.classList.add('flex');
+            if (isMaxRecordsDetailsView) {
+                tableView.classList.add('hidden');
+                tableView.classList.remove('flex');
+                listView.classList.remove('hidden');
+                listView.classList.add('flex');
                 
                 btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg> Minimize View`;
                 btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#b91c1c';
             } else {
-                defaultView.classList.remove('hidden');
-                tableView.classList.add('hidden');
-                tableView.classList.remove('flex');
+                listView.classList.add('hidden');
+                listView.classList.remove('flex');
+                tableView.classList.remove('hidden');
+                tableView.classList.add('flex');
                 
-                btn.innerHTML = `Table`; 
+                btn.innerHTML = `Details`; 
                 btn.style.background = '#ffffff'; btn.style.borderColor = '#d1d5db'; btn.style.color = '#4b5563';
             }
         }
@@ -1210,7 +1212,7 @@
             slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); slider.scrollLeft = scrollLeft - ((e.pageX - slider.offsetLeft) - startX) * 1.5; });
             
             document.getElementById('btn-punctuality-trend').addEventListener('click', togglePunctualityTrend);
-            document.getElementById('btn-max-records-table').addEventListener('click', toggleMaxRecordsTable);
+            document.getElementById('btn-max-records-toggle').addEventListener('click', toggleMaxRecordsTable);
         }
 
         function renderMaxRecords(data) {
@@ -1277,7 +1279,7 @@
 
                 tableHTML += `
                 <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="p-2 border border-gray-200 text-center font-extrabold" style="color: ${getReclaimColor(rc)}">${rc}</td>
+                    <td class="px-1 py-2 border border-gray-200 text-center font-extrabold w-[60px]" style="color: ${getReclaimColor(rc)}">${rc}</td>
                     <td class="p-2 border border-gray-200 text-center font-bold text-blue-800 bg-blue-50/30">${maxIntBucket ? maxIntBucket.bags : '-'}</td>
                     <td class="p-2 border border-gray-200 text-center font-bold text-blue-700 bg-blue-50/30">${maxIntBucket ? maxIntBucket.flights : '-'}</td>
                     <td class="p-2 border border-gray-200 text-center font-medium text-gray-600 bg-blue-50/30 text-[0.65rem]">${intRemarks}</td>
