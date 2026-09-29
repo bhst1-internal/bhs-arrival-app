@@ -34,7 +34,7 @@
         th { background-color: #f9fafb; font-weight: 600; font-size: 0.65rem; text-transform: uppercase; color: #4b5563; }
         td { font-size: 0.7rem; color: #1f2937; }
         
-        .table-scroll::-webkit-scrollbar { height: 8px; }
+        .table-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
         .table-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .table-scroll::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         .table-scroll::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
@@ -434,32 +434,46 @@
                     </div>
                 </div>
 
-                <!-- NEW: 3. Flight Punctuality -->
-                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
+                <!-- UPDATED: 3. Flight Punctuality -->
+                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]" id="punctuality-section-container">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
                         <h3 class="font-bold text-gray-700">3. Flight Punctuality</h3>
+                        <button id="btn-punctuality-trend" title="View Trend" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff;transition:all 0.2s;">
+                            Trend
+                        </button>
                     </div>
-                    <div class="flex-1 w-full min-h-0 relative">
-                        <!-- Flight Punctuality Content -->
-                        <div class="flex-1 w-full h-full relative overflow-x-auto overflow-y-auto sim-scroll border rounded-lg shadow-sm">
-                            <table class="w-full text-center border-collapse min-w-[500px]">
+                    
+                    <!-- Default View (Table + Percentages) -->
+                    <div id="punctuality-default-view" class="flex-1 flex flex-col min-h-0 w-full relative">
+                        <div class="flex-1 w-full relative overflow-x-auto overflow-y-auto table-scroll border rounded shadow-[0_0_5px_rgba(0,0,0,0.05)]">
+                            <table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse min-w-[500px]">
                                 <thead>
-                                    <tr class="bg-blue-500 text-white text-[0.65rem] uppercase tracking-wider">
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[12%]">Punctuality</th>
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[12%]">Flight</th>
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[12%]">Aircraft Type</th>
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[20%]">Average Time</th>
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[10%]">Occurrence</th>
-                                        <th class="p-2 border-b-2 border-r border-blue-600 font-bold w-[17%]">Reclaim</th>
-                                        <th class="p-2 border-b-2 border-blue-600 font-bold w-[17%]">Total Bags</th>
+                                    <tr>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Punctuality</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Flight</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Aircraft Type</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Average Time</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Occurrence</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Reclaim</th>
+                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 shadow-[0_2px_5px_-2px_rgba(0,0,0,0.1)] text-center">Total Bags</th>
                                     </tr>
                                 </thead>
-                                <tbody id="punctuality-tbody" class="text-[0.7rem] font-semibold text-gray-800">
+                                <tbody id="punctuality-tbody" class="text-gray-800 font-medium">
                                     <!-- Rows dynamically populated via JS -->
-                                    <tr><td colspan="7" class="p-4 text-gray-400 italic">Processing data...</td></tr>
+                                    <tr><td colspan="7" class="p-4 text-center text-gray-400 italic border">Processing data...</td></tr>
                                 </tbody>
                             </table>
                         </div>
+                        
+                        <!-- Percentage Summary Box -->
+                        <div id="punctuality-percentages" class="mt-3 grid grid-cols-3 gap-2 shrink-0">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart View (Hidden by default) -->
+                    <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col">
+                        <div id="chart-punctuality-trend" class="flex-1 w-full"></div>
                     </div>
                 </div>
 
@@ -651,6 +665,8 @@
         let simCounter = 1; 
         const loader = document.getElementById('loading-overlay');
         let activeFlightUid = null;
+        let isTrendView = false;
+        const internationalFlights = ["0D178", "3U3995", "6E1037", "8B661", "8B673", "8B675", "8B677", "8B679", "8M501", "8M503", "A12386", "AH3156", "BA33", "BG921", "BI871", "BI873", "BR217", "BR227", "BS315", "CA483", "CI721", "CX723", "CX725", "CX729", "CZ3047", "CZ349", "CZ5031", "CZ8011", "CZ8097", "CZ8301", "EK344", "EK346", "ET638", "EY486", "EY488", "FM7221", "FM863", "FM865", "FM885", "FY3611", "FY3693", "FY3971", "G9800", "GA820", "H9890", "HY553", "IA455", "ID7250", "ID7262", "ID7264", "ID7282", "IU168", "JL723", "JT156", "JT160", "JT164", "JX725", "JY160", "KL809", "MF847", "MF8677", "MF8723", "MF897", "MH1", "MH103", "MH105", "MH107", "MH109", "MH117", "MH119", "MH122", "MH126", "MH132", "MH134", "MH138", "MH144", "MH146", "MH148", "MH153", "MH157", "MH159", "MH165", "MH171", "MH178", "MH181", "MH183", "MH185", "MH191", "MH193", "MH195", "MH197", "MH199", "MH205", "MH209", "MH21", "MH250", "MH3", "MH319", "MH367", "MH377", "MH387", "MH389", "MH39", "MH469", "MH484", "MH486", "MH496", "MH521", "MH523", "MH53", "MH57", "MH580", "MH602", "MH604", "MH606", "MH608", "MH614", "MH616", "MH620", "MH624", "MH628", "MH64", "MH67", "MH705", "MH709", "MH710", "MH712", "MH714", "MH716", "MH720", "MH721", "MH726", "MH73", "MH747", "MH749", "MH751", "MH753", "MH755", "MH759", "MH773", "MH783", "MH785", "MH787", "MH789", "MH79", "MH791", "MH795", "MH797", "MH807", "MH840", "MH846", "MH850", "MH856", "MH865", "MH870", "MH872", "MH8829", "MH89", "MHF847", "MK646", "MU5095", "MU873", "OC192", "OD122", "OD132", "OD136", "OD158", "OD161", "OD172", "OD178", "OD181", "OD192", "OD206", "OD216", "OD232", "OD242", "OD294", "OD296", "OD307", "OD337", "OD357", "OD373", "OD387", "OD389", "OD397", "OD399", "OD503", "OD523", "OD527", "OD529", "OD541", "OD572", "OD606", "OD613", "OD615", "OD617", "OD643", "OD671", "OD673", "OD675", "OD693", "OD702", "OD752", "OD802", "OD804", "OD808", "OD821", "OD873", "PR525", "QG502", "QR844", "QR852", "QR854", "RX863", "RY6607", "SQ104", "SQ106", "SQ108", "SQ114", "SQ116", "SQ122", "SQ126", "SV834", "T5803", "TG415", "TG417", "TJ174", "TK174", "TK60", "TK62", "UL314", "UL318", "VJ1813", "VJ825", "VJ905", "VN679", "VN681", "WY821", "WY823", "XH148", "ZH327", "ZH329", "ZH9329"];
 
         const palette = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
 
@@ -1793,6 +1809,9 @@
                 const walk = (x - startX) * 1.5; // Scroll speed multiplier
                 slider.scrollLeft = scrollLeft - walk;
             });
+            
+            // Toggle Punctuality Trend Event
+            document.getElementById('btn-punctuality-trend').addEventListener('click', togglePunctualityTrend);
         }
 
         // Function to render Max Records Box
@@ -1893,7 +1912,9 @@
         function renderPunctualityTable(data) {
             const tbody = document.getElementById('punctuality-tbody');
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-gray-400 italic">No flights match the current filters.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-gray-400 italic text-center border">No flights match the current filters.</td></tr>';
+                document.getElementById('punctuality-percentages').innerHTML = '';
+                if(isTrendView) renderPunctualityTrendChart();
                 return;
             }
 
@@ -1906,12 +1927,20 @@
             };
 
             let stats = { EARLY: {}, 'ON-TIME': {}, LATE: {} };
+            let totalStats = { early: 0, onTime: 0, late: 0, total: 0 };
             
             data.forEach(d => {
                 let p = getPunc(d);
                 if (!p) return;
+                
                 let cat = p.cat;
                 let fl = d.Flight;
+                
+                if(cat === 'EARLY') totalStats.early++;
+                else if(cat === 'LATE') totalStats.late++;
+                else totalStats.onTime++;
+                totalStats.total++;
+
                 if (!stats[cat][fl]) stats[cat][fl] = { count: 0, diffs: [], reclaims: new Set(), acs: new Set(), bags: [] };
                 stats[cat][fl].count++;
                 stats[cat][fl].diffs.push(p.diff);
@@ -1920,11 +1949,30 @@
                 stats[cat][fl].bags.push(d.BagCount);
             });
 
+            let pctEarly = totalStats.total ? ((totalStats.early / totalStats.total) * 100).toFixed(1) : 0;
+            let pctOnTime = totalStats.total ? ((totalStats.onTime / totalStats.total) * 100).toFixed(1) : 0;
+            let pctLate = totalStats.total ? ((totalStats.late / totalStats.total) * 100).toFixed(1) : 0;
+
+            document.getElementById('punctuality-percentages').innerHTML = `
+                <div class="flex flex-col items-center justify-center bg-yellow-50 border border-yellow-200 rounded p-1.5 shadow-sm">
+                    <span class="text-[0.6rem] font-bold text-yellow-600 uppercase tracking-wide">Early</span>
+                    <span class="text-sm font-extrabold text-yellow-700">${pctEarly}%</span>
+                </div>
+                <div class="flex flex-col items-center justify-center bg-green-50 border border-green-200 rounded p-1.5 shadow-sm">
+                    <span class="text-[0.6rem] font-bold text-green-600 uppercase tracking-wide">On-Time</span>
+                    <span class="text-sm font-extrabold text-green-700">${pctOnTime}%</span>
+                </div>
+                <div class="flex flex-col items-center justify-center bg-red-50 border border-red-200 rounded p-1.5 shadow-sm">
+                    <span class="text-[0.6rem] font-bold text-red-600 uppercase tracking-wide">Late</span>
+                    <span class="text-sm font-extrabold text-red-700">${pctLate}%</span>
+                </div>
+            `;
+
             let topFlights = [];
             const categories = [
-                { key: 'EARLY', label: 'Early', bg: 'bg-yellow-300', text: 'text-yellow-900', border: 'border-yellow-400' },
-                { key: 'ON-TIME', label: 'On-Time', bg: 'bg-green-300', text: 'text-green-900', border: 'border-green-400' },
-                { key: 'LATE', label: 'Late', bg: 'bg-red-300', text: 'text-red-900', border: 'border-red-400' }
+                { key: 'EARLY', label: 'Early', bg: 'bg-yellow-400/20', text: 'text-yellow-700' },
+                { key: 'ON-TIME', label: 'On-Time', bg: 'bg-green-400/20', text: 'text-green-700' },
+                { key: 'LATE', label: 'Late', bg: 'bg-red-400/20', text: 'text-red-700' }
             ];
 
             categories.forEach(c => {
@@ -1960,32 +2008,163 @@
                     let bagStr = minB === maxB ? `${maxB}` : `${minB}-${maxB}`;
 
                     topFlights.push(`
-                        <tr class="${c.bg} ${c.text} border-b ${c.border} transition hover:opacity-90">
-                            <td class="p-2 border-r ${c.border}">${c.label}</td>
-                            <td class="p-2 border-r ${c.border}">${topF}</td>
-                            <td class="p-2 border-r ${c.border}">${acStr}</td>
-                            <td class="p-2 border-r ${c.border}">${avgStr}</td>
-                            <td class="p-2 border-r ${c.border}">${s.count}</td>
-                            <td class="p-2 border-r ${c.border}">${Array.from(s.reclaims).join(', ')}</td>
-                            <td class="p-2">${bagStr}</td>
+                        <tr class="${c.bg} transition-colors hover:bg-opacity-40">
+                            <td class="p-2 border border-gray-200 text-center font-bold ${c.text}">${c.label}</td>
+                            <td class="p-2 border border-gray-200 text-center font-semibold text-gray-800">${topF}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-700">${acStr}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-700">${avgStr}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-700 font-bold">${s.count}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-700 max-w-[100px] truncate" title="${Array.from(s.reclaims).join(', ')}">${Array.from(s.reclaims).join(', ')}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-700">${bagStr}</td>
                         </tr>
                     `);
                 } else {
                     topFlights.push(`
-                        <tr class="${c.bg} ${c.text} border-b ${c.border} opacity-50">
-                            <td class="p-2 border-r ${c.border}">${c.label}</td>
-                            <td class="p-2 border-r ${c.border}">-</td>
-                            <td class="p-2 border-r ${c.border}">-</td>
-                            <td class="p-2 border-r ${c.border}">-</td>
-                            <td class="p-2 border-r ${c.border}">-</td>
-                            <td class="p-2 border-r ${c.border}">-</td>
-                            <td class="p-2">-</td>
+                        <tr class="${c.bg} opacity-50">
+                            <td class="p-2 border border-gray-200 text-center font-bold ${c.text}">${c.label}</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
+                            <td class="p-2 border border-gray-200 text-center text-gray-400">-</td>
                         </tr>
                     `);
                 }
             });
 
             tbody.innerHTML = topFlights.join('');
+            
+            if(isTrendView) renderPunctualityTrendChart();
+        }
+
+        function togglePunctualityTrend() {
+            isTrendView = !isTrendView;
+            const btn = document.getElementById('btn-punctuality-trend');
+            const defaultView = document.getElementById('punctuality-default-view');
+            const trendView = document.getElementById('punctuality-trend-view');
+            
+            if (isTrendView) {
+                defaultView.classList.add('hidden');
+                trendView.classList.remove('hidden');
+                trendView.classList.add('flex');
+                
+                btn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    Minimize View`;
+                btn.style.background = '#fee2e2';
+                btn.style.borderColor = '#ef4444';
+                btn.style.color = '#b91c1c';
+                
+                renderPunctualityTrendChart();
+            } else {
+                defaultView.classList.remove('hidden');
+                trendView.classList.add('hidden');
+                trendView.classList.remove('flex');
+                
+                btn.innerHTML = `Trend`;
+                btn.style.background = '#ffffff';
+                btn.style.borderColor = '#d1d5db';
+                btn.style.color = '#4b5563';
+            }
+        }
+
+        function renderPunctualityTrendChart() {
+            const startDateStr = document.getElementById('filter-start-date').value;
+            const endDateStr = document.getElementById('filter-end-date').value;
+            
+            let startT = getLocalStartOfDay(startDateStr);
+            let endT = getLocalEndOfDay(endDateStr);
+            let diffDays = Math.ceil((endT - startT) / 86400000);
+            
+            let targetStartDate = startT;
+            
+            // If only 1 day is selected, fetch trend for 7 days before
+            if (diffDays <= 1) {
+                targetStartDate = new Date(endT.getTime() - (6 * 86400000));
+                targetStartDate.setHours(0,0,0,0);
+            }
+            
+            const acFilter = document.getElementById('slicer-aircraft').value;
+            const flFilter = document.getElementById('slicer-flight').value;
+            const rcFilterVal = document.getElementById('slicer-reclaim').value;
+            let selectedReclaims = [];
+            if (rcFilterVal !== 'ALL') {
+                try { selectedReclaims = JSON.parse(rcFilterVal); } catch(e) { selectedReclaims = [rcFilterVal]; }
+            }
+            
+            // Filter globalData ignoring punctuality slicer to plot correct percentages
+            const trendData = globalData.filter(d => 
+                (acFilter === 'ALL' || d.Aircraft === acFilter) &&
+                (flFilter === 'ALL' || (flFilter === 'INTERNATIONAL' ? internationalFlights.includes(d.Flight) : d.Flight === flFilter)) &&
+                (rcFilterVal === 'ALL' || selectedReclaims.includes(d.Reclaim)) &&
+                (d.ATA >= targetStartDate && d.ATA <= endT)
+            );
+
+            let dailyStats = {};
+            let curr = new Date(targetStartDate);
+            while(curr <= endT) {
+                let dStr = formatDateForInput(curr);
+                dailyStats[dStr] = { early: 0, onTime: 0, late: 0, total: 0 };
+                curr.setDate(curr.getDate() + 1);
+            }
+            
+            const getPunc = (d) => {
+                if (!d.STA_Raw || !d.ATA) return null;
+                let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
+                if (diffMins > 10) return 'LATE';
+                if (diffMins < -10) return 'EARLY';
+                return 'ON-TIME';
+            };
+
+            trendData.forEach(d => {
+                let p = getPunc(d);
+                if(p) {
+                    let dStr = formatDateForInput(d.ATA);
+                    if(dailyStats[dStr]) {
+                        if(p === 'EARLY') dailyStats[dStr].early++;
+                        else if(p === 'LATE') dailyStats[dStr].late++;
+                        else dailyStats[dStr].onTime++;
+                        dailyStats[dStr].total++;
+                    }
+                }
+            });
+
+            let xDates = Object.keys(dailyStats).sort();
+            let yEarly = []; let yOnTime = []; let yLate = [];
+            
+            xDates.forEach(date => {
+                let st = dailyStats[date];
+                if (st.total === 0) {
+                    yEarly.push(0); yOnTime.push(0); yLate.push(0);
+                } else {
+                    yEarly.push((st.early / st.total) * 100);
+                    yOnTime.push((st.onTime / st.total) * 100);
+                    yLate.push((st.late / st.total) * 100);
+                }
+            });
+
+            let xLabels = xDates.map(d => {
+                let dt = new Date(d);
+                return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+            });
+
+            const traces = [
+                { x: xLabels, y: yEarly, type: 'scatter', mode: 'lines+markers', name: 'Early', line: { color: '#eab308', width: 3 }, marker: { size: 6 } },
+                { x: xLabels, y: yOnTime, type: 'scatter', mode: 'lines+markers', name: 'On-Time', line: { color: '#22c55e', width: 3 }, marker: { size: 6 } },
+                { x: xLabels, y: yLate, type: 'scatter', mode: 'lines+markers', name: 'Late', line: { color: '#ef4444', width: 3 }, marker: { size: 6 } }
+            ];
+
+            const layout = {
+                margin: { t: 10, l: 40, r: 20, b: 40 },
+                font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff',
+                xaxis: { title: '', tickangle: 0, showgrid: true, tickfont: { size: 10 } },
+                yaxis: { title: 'Percentage (%)', range: [0, 100], showgrid: true, zeroline: false },
+                showlegend: true, legend: { orientation: 'h', y: 1.15, x: 0.5, xanchor: 'center' },
+                hovermode: 'x unified'
+            };
+
+            Plotly.react('chart-punctuality-trend', traces, layout, { responsive: true, displayModeBar: false });
         }
 
         function executeDashboardUpdate() {
@@ -1998,8 +2177,6 @@
             const startDate = getLocalStartOfDay(document.getElementById('filter-start-date').value);
             const endDate = getLocalEndOfDay(document.getElementById('filter-end-date').value);
             
-            const internationalFlights = ["0D178", "3U3995", "6E1037", "8B661", "8B673", "8B675", "8B677", "8B679", "8M501", "8M503", "A12386", "AH3156", "BA33", "BG921", "BI871", "BI873", "BR217", "BR227", "BS315", "CA483", "CI721", "CX723", "CX725", "CX729", "CZ3047", "CZ349", "CZ5031", "CZ8011", "CZ8097", "CZ8301", "EK344", "EK346", "ET638", "EY486", "EY488", "FM7221", "FM863", "FM865", "FM885", "FY3611", "FY3693", "FY3971", "G9800", "GA820", "H9890", "HY553", "IA455", "ID7250", "ID7262", "ID7264", "ID7282", "IU168", "JL723", "JT156", "JT160", "JT164", "JX725", "JY160", "KL809", "MF847", "MF8677", "MF8723", "MF897", "MH1", "MH103", "MH105", "MH107", "MH109", "MH117", "MH119", "MH122", "MH126", "MH132", "MH134", "MH138", "MH144", "MH146", "MH148", "MH153", "MH157", "MH159", "MH165", "MH171", "MH178", "MH181", "MH183", "MH185", "MH191", "MH193", "MH195", "MH197", "MH199", "MH205", "MH209", "MH21", "MH250", "MH3", "MH319", "MH367", "MH377", "MH387", "MH389", "MH39", "MH469", "MH484", "MH486", "MH496", "MH521", "MH523", "MH53", "MH57", "MH580", "MH602", "MH604", "MH606", "MH608", "MH614", "MH616", "MH620", "MH624", "MH628", "MH64", "MH67", "MH705", "MH709", "MH710", "MH712", "MH714", "MH716", "MH720", "MH721", "MH726", "MH73", "MH747", "MH749", "MH751", "MH753", "MH755", "MH759", "MH773", "MH783", "MH785", "MH787", "MH789", "MH79", "MH791", "MH795", "MH797", "MH807", "MH840", "MH846", "MH850", "MH856", "MH865", "MH870", "MH872", "MH8829", "MH89", "MHF847", "MK646", "MU5095", "MU873", "OC192", "OD122", "OD132", "OD136", "OD158", "OD161", "OD172", "OD178", "OD181", "OD192", "OD206", "OD216", "OD232", "OD242", "OD294", "OD296", "OD307", "OD337", "OD357", "OD373", "OD387", "OD389", "OD397", "OD399", "OD503", "OD523", "OD527", "OD529", "OD541", "OD572", "OD606", "OD613", "OD615", "OD617", "OD643", "OD671", "OD673", "OD675", "OD693", "OD702", "OD752", "OD802", "OD804", "OD808", "OD821", "OD873", "PR525", "QG502", "QR844", "QR852", "QR854", "RX863", "RY6607", "SQ104", "SQ106", "SQ108", "SQ114", "SQ116", "SQ122", "SQ126", "SV834", "T5803", "TG415", "TG417", "TJ174", "TK174", "TK60", "TK62", "UL314", "UL318", "VJ1813", "VJ825", "VJ905", "VN679", "VN681", "WY821", "WY823", "XH148", "ZH327", "ZH329", "ZH9329"];
-
             let selectedReclaims = [];
             if (rcFilterVal !== 'ALL') {
                 try { selectedReclaims = JSON.parse(rcFilterVal); } catch(e) { selectedReclaims = [rcFilterVal]; }
