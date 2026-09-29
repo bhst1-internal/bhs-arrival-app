@@ -324,7 +324,7 @@
             <!-- MODIFIED TIMELINE SECTION -->
             <div id="timelineSection" class="bg-white p-4 rounded-lg shadow relative border-t-4 border-indigo-500 transition-all">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700 tracking-wide text-sm">1. Operational Timeline</h3>
+                    <h3 class="font-bold text-gray-700">1. Operational Timeline</h3>
                     <div class="flex items-center space-x-3">
                         <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;border:1px solid #d1d5db;font-size:.65rem;font-weight:700;color:#4b5563;cursor:pointer;background:#ffffff">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -370,11 +370,55 @@
                 </div>
             </div>
 
+            <!-- NEW 6-BOX GRID LAYOUT -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- MULTI-TIME CAPACITY INPUT SIMULATOR -->
+                
+                <!-- NEW: 2. Max Records -->
+                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
+                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
+                        <h3 class="font-bold text-gray-700">2. Max Records</h3>
+                    </div>
+                    <div class="flex-1 w-full min-h-0 relative">
+                        <!-- Content for Max Records goes here -->
+                    </div>
+                </div>
+
+                <!-- NEW: 3. Flight Punctuality -->
+                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
+                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
+                        <h3 class="font-bold text-gray-700">3. Flight Punctuality</h3>
+                    </div>
+                    <div class="flex-1 w-full min-h-0 relative">
+                        <!-- Content for Flight Punctuality goes here -->
+                    </div>
+                </div>
+
+                <!-- SWAPPED: 4. Reclaim Load -->
+                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
+                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
+                        <h3 class="font-bold text-gray-700">4. Reclaim Load</h3>
+                        <select id="reclaim-sort" class="border p-1 rounded text-xs bg-gray-50 focus:ring-blue-500 outline-none font-medium">
+                            <option value="bags-desc">Total Bags &darr;</option>
+                            <option value="bags-asc">Total Bags &uarr;</option>
+                            <option value="alpha">Alphabetical</option>
+                            <option value="area">Area (MTB | SAT)</option>
+                        </select>
+                    </div>
+                    <div id="chart-bar" class="flex-1 w-full min-h-0 relative"></div>
+                </div>
+
+                <!-- SWAPPED: 5. Overall BR Duration Distribution -->
+                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
+                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
+                        <h3 class="font-bold text-gray-700">5. Overall BR Duration Distribution</h3>
+                    </div>
+                    <div id="chart-histogram" class="flex-1 w-full min-h-0 relative"></div>
+                </div>
+
+                <!-- SWAPPED & RENAMED: 6. Capacity Input Simulator -->
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col" style="height: 390px;">
                     <div class="flex justify-between items-center border-b pb-2 mb-3 shrink-0">
-                        <h3 class="font-bold text-gray-700">2. Capacity Input Simulator</h3>
+                        <h3 class="font-bold text-gray-700">6. Capacity Input Simulator</h3>
                     </div>
                     
                     <div class="flex-1 flex flex-col min-h-0">
@@ -445,9 +489,9 @@
                     </div>
                 </div>
 
-                <!-- ESTIMATION OUTPUT PANEL -->
+                <!-- SWAPPED & RENAMED: 7. Estimation Output -->
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col" style="height: 390px;">
-                    <h3 class="font-bold text-gray-700 border-b pb-2 mb-3 shrink-0">3. Estimation Output</h3>
+                    <h3 class="font-bold text-gray-700 border-b pb-2 mb-3 shrink-0">7. Estimation Output</h3>
                     <div class="flex-1 grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200 overflow-y-auto sim-scroll">
                         
                         <!-- Upper Level -->
@@ -482,27 +526,6 @@
                     </div>
                 </div>
 
-                <!-- 4. RECLAIM LOAD -->
-                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
-                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
-                        <h3 class="font-bold text-gray-700">4. Reclaim Load</h3>
-                        <select id="reclaim-sort" class="border p-1 rounded text-xs bg-gray-50 focus:ring-blue-500 outline-none font-medium">
-                            <option value="bags-desc">Total Bags &darr;</option>
-                            <option value="bags-asc">Total Bags &uarr;</option>
-                            <option value="alpha">Alphabetical</option>
-                            <option value="area">Area (MTB | SAT)</option>
-                        </select>
-                    </div>
-                    <div id="chart-bar" class="flex-1 w-full min-h-0 relative"></div>
-                </div>
-
-                <!-- 5. OVERALL BR DURATION DISTRIBUTION -->
-                <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
-                    <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
-                        <h3 class="font-bold text-gray-700">5. Overall BR Duration Distribution</h3>
-                    </div>
-                    <div id="chart-histogram" class="flex-1 w-full min-h-0 relative"></div>
-                </div>
             </div>
         </div>
 
@@ -510,7 +533,7 @@
         <div id="reclaim-details-section" class="bg-white p-6 rounded-lg shadow hidden border-t-4 border-yellow-500 mt-6">
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h3 class="font-bold text-xl text-gray-800 mb-1">Breakdown - Reclaim Details: <span id="lbl-reclaim-name" class="text-blue-600"></span></h3>
+                    <h3 class="font-bold text-gray-700">Breakdown - Reclaim Details: <span id="lbl-reclaim-name" class="text-blue-600"></span></h3>
                     <p class="text-sm text-gray-500">Detailed flight-by-flight performance analysis for the selected carousel.</p>
                 </div>
                 <button id="btn-export-excel" class="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded hover:bg-green-700 transition shadow-sm flex-shrink-0 flex items-center gap-1.5" title="Export this table to Excel">
@@ -976,7 +999,8 @@
         document.getElementById('btn-save-as').addEventListener('click', () => {
             if (!window.embeddedExcelBase64) return;
             let newHTML = pristineHTML.replace(
-
+                /<script id="embedded-excel-data">window\.embeddedExcelBase64 = ".*?";<\/script>/,
+                `<script id="embedded-excel-data">window.embeddedExcelBase64 = "${window.embeddedExcelBase64}";<\/script>`
             );
             const blob = new Blob(["<!DOCTYPE html>\n" + newHTML], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
