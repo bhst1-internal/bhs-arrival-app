@@ -1437,32 +1437,60 @@
             });
 
             const drawRangeChart = (divId, catKey, catName, catColor) => {
-                let xDates = [], bases = [], heights = [], hoverData = [], maxDeviation = 0;
+                let xDates = [], lows = [], highs = [], closes = [], hoverData = [], maxDeviation = 0;
+                
                 Object.keys(dailyStats).sort().forEach(date => {
                     let st = dailyStats[date], vals = st[catKey].vals, dt = new Date(date);
                     xDates.push(`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`);
+                    
                     if(vals.length > 0) {
                         let min = Math.min(...vals), max = Math.max(...vals);
+                        let percent = (vals.length / st.total) * 100; // Calculate Close (Percentage)
                         if (max > maxDeviation) maxDeviation = max;
-                        bases.push(min); heights.push(Math.max(max - min, 1.5)); 
-                        hoverData.push({ min: Math.round(min), max: Math.round(max), avg: Math.round(vals.reduce((a,b)=>a+b,0)/vals.length), count: vals.length });
+                        
+                        lows.push(min); 
+                        highs.push(max); 
+                        closes.push(percent);
+                        hoverData.push({ min: Math.round(min), max: Math.round(max), pct: percent.toFixed(1), count: vals.length, total: st.total });
                     } else {
-                        bases.push(null); heights.push(null); hoverData.push(null);
+                        lows.push(null); highs.push(null); closes.push(null); hoverData.push(null);
                     }
                 });
 
-                let trace = { x: xDates, y: heights, base: bases, type: 'bar', marker: { color: getRgba(catColor, 0.7), line: { color: catColor, width: 1.5 } }, hoverinfo: 'none' };
+                // Trace 1: High-Low Range (Vertical Line on primary Y-axis)
+                let hl_x = [], hl_y = [];
+                for (let i = 0; i < xDates.length; i++) {
+                    if (highs[i] !== null) {
+                        hl_x.push(xDates[i], xDates[i], null);
+                        hl_y.push(lows[i], highs[i], null);
+                    }
+                }
+                
+                let traceHL = { 
+                    x: hl_x, y: hl_y, type: 'scatter', mode: 'lines', 
+                    line: { color: getRgba(catColor, 0.4), width: 6 }, 
+                    hoverinfo: 'none' 
+                };
+
+                // Trace 2: Close Percentage (Horizontal Tick Marker on secondary Y-axis)
+                let traceClose = { 
+                    x: xDates, y: closes, type: 'scatter', mode: 'markers', 
+                    marker: { symbol: 'line-ew', size: 16, color: catColor, line: { color: catColor, width: 3 } }, 
+                    yaxis: 'y2', hoverinfo: 'none' 
+                };
+
                 let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
                 
                 let layout = { 
-                    margin: { t: 5, b: 20, l: 35, r: 10 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 
+                    margin: { t: 5, b: 20, l: 30, r: 35 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 
                     xaxis: { showgrid: false, tickfont: { size: 9 } }, 
                     yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', tickfont: { size: 9 }, zeroline: false }, 
-                    showlegend: false 
+                    yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, tickfont: { size: 9 }, zeroline: false },
+                    showlegend: false, hovermode: 'closest'
                 };
 
                 let chartEl = document.getElementById(divId);
-                Plotly.react(divId, [trace], layout, { responsive: true, displayModeBar: false });
+                Plotly.react(divId, [traceHL, traceClose], layout, { responsive: true, displayModeBar: false });
                 
                 if (!document.getElementById('trend-custom-tooltip')) {
                     let tooltip = document.createElement('div'); tooltip.id = 'trend-custom-tooltip';
@@ -1472,21 +1500,29 @@
                 }
 
                 if (chartEl.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartEl.removeAllListeners(e)); }
+                
                 chartEl.on('plotly_hover', function(data) {
-                    let pt = data.points[0], idx = pt.pointIndex, hd = hoverData[idx];
+                    let pt = data.points.find(p => p.curveNumber === 1) || data.points[0];
+                    let idx = xDates.indexOf(pt.x);
+                    if (idx === -1) return;
+                    
+                    let hd = hoverData[idx];
                     if(!hd) return;
+                    
                     let colorClass = catKey === 'LATE' ? 'text-red-400' : (catKey === 'EARLY' ? 'text-yellow-400' : 'text-green-400');
                     let timeContext = catKey === 'EARLY' ? 'Mins Early' : (catKey === 'LATE' ? 'Mins Late' : 'Mins Diff');
+                    
                     document.getElementById('trend-tooltip-content').innerHTML = `
                         <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">${catName} Trend Details</div>
                         <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-white ml-1">${pt.x}</span></div>
-                        <div class="mb-1"><span class="text-gray-400">Flights:</span> <span class="font-bold text-white ml-1">${hd.count}</span></div>
-                        <div class="mb-1"><span class="text-gray-400">Range:</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
-                        <div><span class="text-gray-400">Average:</span> <span class="font-bold text-white ml-1">${hd.avg}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Flights:</span> <span class="font-bold text-white ml-1">${hd.count} <span class="text-gray-500 font-normal">/ ${hd.total}</span></span></div>
+                        <div class="mb-1"><span class="text-gray-400">Range (High/Low):</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
+                        <div><span class="text-gray-400">Close (%):</span> <span class="font-bold text-white ml-1">${hd.pct}%</span></div>
                     `;
                     let tooltip = document.getElementById('trend-custom-tooltip');
                     tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
                 });
+                
                 chartEl.on('plotly_unhover', function() { document.getElementById('trend-custom-tooltip').style.opacity = '0'; });
                 if (!chartEl._customMouseAttached) { chartEl.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('trend-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = evt.pageY + 'px'; } }); chartEl._customMouseAttached = true; }
             };
