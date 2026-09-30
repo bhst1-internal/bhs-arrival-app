@@ -1492,7 +1492,7 @@
         }
     }
 
-    function renderPunctualityTrendChart() {
+function renderPunctualityTrendChart() {
         let startT = Utils.getLocalStartOfDay(DOM['filter-start-date'].value), endT = Utils.getLocalEndOfDay(DOM['filter-end-date'].value);
         let targetStartDate = Math.ceil((endT - startT) / 86400000) <= 1 ? new Date(endT.getTime() - (6 * 86400000)).setHours(0,0,0,0) : startT;
         
@@ -1573,16 +1573,15 @@
 
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
-            // INTEGRATED LAYOUT CHANGES
             let layout = { 
-                margin: { t: 10, b: 0, l: 0, r: 0 }, // Adjusted to stretch and align
+                margin: { t: 10, b: 0, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, // hidden dates
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, // hidden left marks
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false }, // hidden right marks
-                showlegend: false, hovermode: 'x' // tooltips trigger uniformly
+                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
+                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
+                showlegend: false, hovermode: 'x' 
             };
 
             let chartEl = document.getElementById(divId);
@@ -1598,6 +1597,8 @@
             if (chartEl.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartEl.removeAllListeners(e)); }
             
             chartEl.on('plotly_hover', function(data) {
+                if (!data || !data.points || data.points.length === 0) return;
+                
                 let pt = data.points[0];
                 let idx = xDates.indexOf(pt.x);
                 if (idx === -1) return;
@@ -1615,12 +1616,31 @@
                     <div class="mb-1"><span class="text-gray-400">Median:</span> <span class="font-bold text-white ml-1">${hd.median} mins</span></div>
                     <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-teal-300 ml-1">${hd.pct}%</span></div>
                 `;
+                
                 let tooltip = document.getElementById('trend-custom-tooltip');
-                tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
+                // FIXED: Using clientX and clientY for fixed positioning instead of pageX/pageY
+                if (data.event) {
+                    tooltip.style.left = data.event.clientX + 'px'; 
+                    tooltip.style.top = data.event.clientY + 'px'; 
+                }
+                tooltip.style.opacity = '1';
             });
             
-            chartEl.on('plotly_unhover', function() { document.getElementById('trend-custom-tooltip').style.opacity = '0'; });
-            if (!chartEl._customMouseAttached) { chartEl.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('trend-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = evt.pageY + 'px'; } }); chartEl._customMouseAttached = true; }
+            chartEl.on('plotly_unhover', function() { 
+                document.getElementById('trend-custom-tooltip').style.opacity = '0'; 
+            });
+            
+            if (!chartEl._customMouseAttached) { 
+                chartEl.addEventListener('mousemove', (evt) => { 
+                    let tooltip = document.getElementById('trend-custom-tooltip'); 
+                    if(tooltip && tooltip.style.opacity === '1') { 
+                        // FIXED: Using clientX and clientY
+                        tooltip.style.left = evt.clientX + 'px'; 
+                        tooltip.style.top = evt.clientY + 'px'; 
+                    } 
+                }); 
+                chartEl._customMouseAttached = true; 
+            }
         };
 
         drawRangeChart('chart-trend-early', 'EARLY', 'Early', '#eab308');
