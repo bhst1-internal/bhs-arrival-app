@@ -2175,7 +2175,8 @@ function renderPunctualityTrendChart() {
         let stepVal = xAxisDtick || 86400000, layoutArgs = { margin: { t: 10, l: 60, r: 60, b: 85 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', hovermode: 'x', shapes: [], xaxis: { title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, tickvals: xAxisTickVals, ticktext: xAxisTickText, range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)], hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M', showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1, anchor: 'y', side: 'bottom' }, yaxis: { title: 'No. of Bags', side: 'left', showgrid: true, domain: [0, 1 - (65 / 400) - (15 / 400)], rangemode: 'nonnegative', zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1 }, yaxis2: { title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, zeroline: false, tickformat: 'd', domain: [1 - (65 / 400), 1], rangemode: 'nonnegative' }, showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) } };
 
         // NEW ADDITION: Show individual midpoint dates and vertical separator lines
-        if (diffDays > 1) {
+        // Only display if diffDays > 1 AND the interval is NOT 'daily'
+        if (diffDays > 1 && interval !== 'daily') {
             layoutArgs.annotations = [];
             let currentDayStart = new Date(sTime);
             let endDayTime = eTime;
