@@ -337,13 +337,13 @@
                             <table class="w-full min-h-full text-xs text-left whitespace-nowrap bg-white border-collapse">
                                 <thead>
                                     <tr>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-1 border font-bold text-gray-700 text-center w-[60px]">Reclaim</th>
-                                        <th id="th-int-bags" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Bags/Hour</th>
-                                        <th id="th-int-flights" class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Flights/Hour</th>
-                                        <th class="sticky top-0 bg-blue-50 z-20 p-2 border font-bold text-blue-800 text-center">Event Time</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Bags/Flight</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">Flight</th>
-                                        <th class="sticky top-0 bg-teal-50 z-20 p-2 border font-bold text-teal-800 text-center">ATA</th>
+                                        <th class="bg-gray-100 p-1 border font-bold text-gray-700 text-center w-[60px]">Reclaim</th>
+                                        <th id="th-int-bags" class="bg-blue-50 p-2 border font-bold text-blue-800 text-center">Bags/Hour</th>
+                                        <th id="th-int-flights" class="bg-blue-50 p-2 border font-bold text-blue-800 text-center">Flights/Hour</th>
+                                        <th class="bg-blue-50 p-2 border font-bold text-blue-800 text-center">Event Time</th>
+                                        <th class="bg-teal-50 p-2 border font-bold text-teal-800 text-center">Bags/Flight</th>
+                                        <th class="bg-teal-50 p-2 border font-bold text-teal-800 text-center">Flight</th>
+                                        <th class="bg-teal-50 p-2 border font-bold text-teal-800 text-center">ATA</th>
                                     </tr>
                                 </thead>
                                 <tbody id="max-records-tbody" class="text-gray-800 font-medium relative"></tbody>
@@ -368,13 +368,13 @@
                             <table class="w-full text-xs text-left whitespace-nowrap bg-white border-collapse min-w-[500px]">
                                 <thead>
                                     <tr>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Punctuality</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Flight</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Aircraft Type</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Average Time</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Occurrence</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Reclaim</th>
-                                        <th class="sticky top-0 bg-gray-100 z-20 p-2 border font-bold text-gray-700 text-center">Total Bags</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Punctuality</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Flight</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Aircraft Type</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Average Time</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Occurrence</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Reclaim</th>
+                                        <th class="bg-gray-100 p-2 border font-bold text-gray-700 text-center">Total Bags</th>
                                     </tr>
                                 </thead>
                                 <tbody id="punctuality-tbody" class="text-gray-800 font-medium"></tbody>
@@ -1700,7 +1700,7 @@ function renderPunctualityTrendChart() {
             document.getElementById('punctuality-trend-thead').innerHTML = '<tr><th class="p-1.5 border font-bold text-gray-700 bg-gray-100">Punctuality</th></tr>';
             document.getElementById('punctuality-trend-tbody').innerHTML = '<tr><td class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
         } else {
-            let theadHTML = `<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-[90px] min-w-[90px] max-w-[90px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Punctuality</th>`;
+            let theadHTML = `<tr><th class="bg-gray-100 p-1.5 border font-bold text-gray-700 w-[90px] min-w-[90px] max-w-[90px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Punctuality</th>`;
             validDates.forEach(d => {
                 theadHTML += `<th class="p-1.5 border font-bold text-gray-700 bg-gray-50">${d}</th>`;
             });
@@ -1709,15 +1709,15 @@ function renderPunctualityTrendChart() {
 
             let tbodyHTML = `
             <tr class="hover:bg-yellow-50/50 transition-colors">
-                <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Early (%)</td>
+                <td class="bg-yellow-50 p-1.5 border font-bold text-yellow-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Early (%)</td>
                 ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-medium">${val}%</td>`).join('')}
             </tr>
             <tr class="hover:bg-green-50/50 transition-colors">
-                <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">On-Time (%)</td>
+                <td class="bg-green-50 p-1.5 border font-bold text-green-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">On-Time (%)</td>
                 ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-medium">${val}%</td>`).join('')}
             </tr>
             <tr class="hover:bg-red-50/50 transition-colors">
-                <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Late (%)</td>
+                <td class="bg-red-50 p-1.5 border font-bold text-red-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Late (%)</td>
                 ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-medium">${val}%</td>`).join('')}
             </tr>`;
             document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
