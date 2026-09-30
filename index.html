@@ -1556,7 +1556,7 @@ function renderPunctualityTrendChart() {
                 line: { color: catColor, width: 1 },
                 fillcolor: Utils.getRgba(catColor, 0.4),
                 boxpoints: false, 
-                width: 0.15, // Reduced width by 25% (from 0.20 to 0.15)
+                width: 0.15, 
                 hoverinfo: 'none' 
             };
 
@@ -1574,16 +1574,16 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 5, b: 5, l: 0, r: 0 }, // Restored tight margins to let the trendline span naturally
+                margin: { t: 5, b: 5, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
                 xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
                 
-                // Box plot y-axis: domain is restricted to the middle 70%, shrinking it vertically and centering it perfectly
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.15, 0.85], showgrid: false, showticklabels: false, zeroline: false }, 
+                // Box plot y-axis: domain shifted from [0.15, 0.85] to [0.25, 0.95] to move it UP towards the top line
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.25, 0.95], showgrid: false, showticklabels: false, zeroline: false }, 
                 
-                // Percentage y-axis: Restored to [0, 105] fixed scale (undoes the previous alignment)
+                // Percentage y-axis: Remains spanning the whole background
                 yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
                 
                 showlegend: false, hovermode: 'x' 
