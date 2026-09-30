@@ -2150,75 +2150,69 @@
                         return match ? match[1].toUpperCase() : br.toUpperCase();
                     };
 
-                    let brMetrics = {};
+                    let baseBRMetrics = {};
                     data.forEach(d => {
-                        let br = d.BreakDownDisplay || 'Unknown'; 
-                        if (!brMetrics[br]) brMetrics[br] = { bags: 0, flights: 0, nb: 0, wb: 0, brDurSum: 0, recDurSum: 0, maxRecDur: 0 };
-                        brMetrics[br].bags += d.BagCount; brMetrics[br].flights += 1;
+                        let br = d.BreakDownDisplay || 'Unknown';
+                        let base = getBaseBR(br);
+
+                        if (!baseBRMetrics[base]) {
+                            baseBRMetrics[base] = { bags: 0, flights: 0, nb: 0, wb: 0, brDurSum: 0, recDurSum: 0, maxRecDur: 0, distribution: {} };
+                        }
+                        
+                        let bm = baseBRMetrics[base];
+                        bm.bags += d.BagCount; 
+                        bm.flights += 1;
                         let ac = (d.Aircraft || '').toUpperCase(); 
-                        if (ac.includes('NARROW') || ac === 'NB') brMetrics[br].nb += 1; 
-                        else if (ac.includes('WIDE') || ac === 'WB') brMetrics[br].wb += 1;
-                        brMetrics[br].brDurSum += d.DurationNum; brMetrics[br].recDurSum += d.ReclaimDurationNum;
-                        if (d.ReclaimDurationNum > brMetrics[br].maxRecDur) brMetrics[br].maxRecDur = d.ReclaimDurationNum;
+                        if (ac.includes('NARROW') || ac === 'NB') bm.nb += 1; 
+                        else if (ac.includes('WIDE') || ac === 'WB') bm.wb += 1;
+                        bm.brDurSum += d.DurationNum; 
+                        bm.recDurSum += d.ReclaimDurationNum;
+                        if (d.ReclaimDurationNum > bm.maxRecDur) bm.maxRecDur = d.ReclaimDurationNum;
+
+                        // Track the breakdown for the tooltip
+                        if (!bm.distribution[br]) bm.distribution[br] = 0;
+                        bm.distribution[br] += d.BagCount;
                     });
 
-                    let brKeys = Object.keys(brMetrics);
-                    
-                    // Aggregate bags per base BR for sorting the x-axis
-                    let baseBRTotals = {};
-                    brKeys.forEach(k => {
-                        let base = getBaseBR(k);
-                        if (!baseBRTotals[base]) baseBRTotals[base] = 0;
-                        baseBRTotals[base] += brMetrics[k].bags;
-                    });
-
-                    let baseBRKeys = Object.keys(baseBRTotals);
+                    let baseBRKeys = Object.keys(baseBRMetrics);
                     let sortVal = document.getElementById('br-sort') ? document.getElementById('br-sort').value : 'bags-desc';
-                    if (sortVal === 'bags-desc') baseBRKeys.sort((a,b) => baseBRTotals[b] - baseBRTotals[a]); 
-                    else if (sortVal === 'bags-asc') baseBRKeys.sort((a,b) => baseBRTotals[a] - baseBRTotals[b]); 
+                    if (sortVal === 'bags-desc') baseBRKeys.sort((a,b) => baseBRMetrics[b].bags - baseBRMetrics[a].bags); 
+                    else if (sortVal === 'bags-asc') baseBRKeys.sort((a,b) => baseBRMetrics[a].bags - baseBRMetrics[b].bags); 
                     else if (sortVal === 'alpha') baseBRKeys.sort((a,b) => a.localeCompare(b));
+                    
+                    let customdata = baseBRKeys.map(k => { 
+                        let m = baseBRMetrics[k]; 
+                        // Format the distribution string for the tooltip
+                        let distHtml = Object.keys(m.distribution).map(subBR => {
+                            let suffix = subBR.substring(k.length).trim() || 'Base';
+                            return `<div class="flex justify-between items-center"><span class="text-gray-400 mr-4">${suffix}:</span> <span class="font-bold text-white">${m.distribution[subBR].toLocaleString()}</span></div>`;
+                        }).join('');
 
-                    // Create individual stacked traces for each exact BR name
-                    let traces = brKeys.map((k, i) => {
-                        let m = brMetrics[k];
-                        let base = getBaseBR(k);
-                        let suffix = k.substring(base.length).trim();
-                        let textLabel = suffix ? `${suffix}: ${m.bags.toLocaleString()}` : m.bags.toLocaleString();
-                        
-                        let customdata = [[ k, m.flights, m.nb, m.wb, m.bags.toLocaleString(), m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0', m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0', m.maxRecDur.toFixed(1) ]];
-                        
-                        return {
-                            x: [base],
-                            y: [m.bags],
-                            customdata: customdata,
-                            hoverinfo: 'none',
-                            type: 'bar',
-                            name: k,
-                            text: [textLabel],
-                            textposition: 'inside',
-                            insidetextanchor: 'middle',
-                            textangle: 0,
-                            constraintext: 'none',
-                            textfont: { color: '#ffffff', weight: 'bold', size: 10 },
-                            marker: { 
-                                color: getRgba(palette[i % palette.length], 0.85), 
-                                line: { color: palette[i % palette.length], width: 1 } 
-                            }
-                        };
+                        return [ 
+                            m.flights, m.nb, m.wb, m.bags.toLocaleString(), 
+                            m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0', 
+                            m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0', 
+                            m.maxRecDur.toFixed(1),
+                            distHtml
+                        ]; 
                     });
 
-                    Plotly.react('chart-br-bar', traces, { 
+                    Plotly.react('chart-br-bar', [{ 
+                        x: baseBRKeys, 
+                        y: baseBRKeys.map(k => baseBRMetrics[k].bags), 
+                        customdata: customdata, hoverinfo: 'none', type: 'bar', 
+                        text: baseBRKeys.map(k => baseBRMetrics[k].bags.toLocaleString()), 
+                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, constraintext: 'none', 
+                        textfont: { color: '#1f2937', weight: 'bold', size: 11 }, 
+                        marker: { 
+                            color: baseBRKeys.map((k, i) => getRgba(palette[i % palette.length], 0.35)), 
+                            line: { color: baseBRKeys.map((k, i) => palette[i % palette.length]), width: 1.5 } 
+                        } 
+                    }], { 
                         margin: { t: 10, l: 60, r: 20, b: 40 }, 
                         font: { family: 'Inter, sans-serif' }, 
                         paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', 
-                        barmode: 'stack',
-                        showlegend: false, // Hidden to prevent clutter
-                        xaxis: { 
-                            title: 'BR Number', 
-                            tickangle: 0, 
-                            categoryorder: 'array', 
-                            categoryarray: baseBRKeys 
-                        }, 
+                        xaxis: { title: 'BR', tickangle: 0 }, 
                         yaxis: { title: 'Total Bags Handled', automargin: true }, 
                         bargap: 0.15 
                     }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'BR_Load', scale: 2 } });
@@ -2237,13 +2231,17 @@
                         let pt = data.points[0]; if (!pt || !pt.customdata) return;
                         
                         document.getElementById('br-tooltip-content').innerHTML = `
-                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">BR Details: <span class="text-blue-400">${pt.customdata[0]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${pt.customdata[1]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${pt.customdata[2]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${pt.customdata[3]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${pt.customdata[4]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[5]} min</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[6]} min</span></div>
-                            <div><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${pt.customdata[7]} min</span></div>
+                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">BR Details: <span class="text-blue-400">${pt.x}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${pt.customdata[0]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${pt.customdata[1]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${pt.customdata[2]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${pt.customdata[3]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[4]} min</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[5]} min</span></div>
+                            <div class="mb-2"><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${pt.customdata[6]} min</span></div>
+                            <div class="border-t border-gray-600 pt-1.5 mt-1">
+                                <div class="font-bold text-gray-300 mb-1 uppercase text-[0.6rem] tracking-wider">Distribution</div>
+                                ${pt.customdata[7]}
+                            </div>
                         `;
                         let tooltip = document.getElementById('br-custom-tooltip');
                         tooltip.style.left = data.event.pageX + 'px'; 
