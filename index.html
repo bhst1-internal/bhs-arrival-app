@@ -362,24 +362,24 @@
                     <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
                         <!-- Early Row -->
                         <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
-                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
+                            <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
                             <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- On-Time Row -->
                         <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
-                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
+                            <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
                             <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- Late Row -->
                         <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
-                            <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
+                            <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
                             <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
                         </div>
                         
                         <!-- Punctuality Table Below Chart -->
-                        <div id="punctuality-trend-table-container" class="w-full mt-2 border border-gray-200 rounded shadow-sm overflow-hidden shrink-0">
+                        <div id="punctuality-trend-table-container" class="w-full mt-1 border border-gray-200 rounded shadow-sm overflow-hidden shrink-0">
                             <div class="overflow-x-auto table-scroll">
-                                <table class="w-full text-[0.65rem] text-center whitespace-nowrap bg-white border-collapse">
+                                <table class="w-full text-[0.65rem] text-center whitespace-nowrap bg-white border-collapse" style="table-layout: fixed;">
                                     <thead id="punctuality-trend-thead">
                                         <!-- Headers generated dynamically -->
                                     </thead>
@@ -1494,9 +1494,13 @@
 
                 let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
                 
+                // Adjusted Plotly margins to align with the table below and removed X-Axis text
                 let layout = { 
-                    margin: { t: 5, b: 20, l: 30, r: 35 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 
-                    xaxis: { showgrid: false, tickfont: { size: 9 } }, 
+                    margin: { t: 8, b: 5, l: 25, r: 25 }, 
+                    font: { family: 'Inter, sans-serif' }, 
+                    paper_bgcolor: 'rgba(0,0,0,0)', 
+                    plot_bgcolor: 'rgba(0,0,0,0)', 
+                    xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, zeroline: false }, 
                     yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', tickfont: { size: 9 }, zeroline: false }, 
                     yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, tickfont: { size: 9 }, zeroline: false },
                     showlegend: false, hovermode: 'closest'
@@ -1523,14 +1527,14 @@
                     if(!hd) return;
                     
                     let colorClass = catKey === 'LATE' ? 'text-red-400' : (catKey === 'EARLY' ? 'text-yellow-400' : 'text-green-400');
-                    let timeContext = catKey === 'EARLY' ? 'Mins Early' : (catKey === 'LATE' ? 'Mins Late' : 'Mins Diff');
                     
+                    // Updated tooltip to match the format of Max Records
                     document.getElementById('trend-tooltip-content').innerHTML = `
-                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">${catName} Trend Details</div>
-                        <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-white ml-1">${pt.x}</span></div>
-                        <div class="mb-1"><span class="text-gray-400">Total Flight:</span> <span class="font-bold text-white ml-1">${hd.count}</span></div>
+                        <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Trend: <span class="text-white">${catName}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-blue-300 ml-1">${pt.x}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-300 ml-1">${hd.count}</span></div>
                         <div class="mb-1"><span class="text-gray-400">Range:</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max} mins</span></div>
-                        <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-white ml-1">${hd.pct}%</span></div>
+                        <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-teal-300 ml-1">${hd.pct}%</span></div>
                     `;
                     let tooltip = document.getElementById('trend-custom-tooltip');
                     tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
@@ -1555,7 +1559,7 @@
                 if(st.total === 0) return; // Skip days with no data matching filters
                 
                 let dt = new Date(date);
-                let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+                let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
                 
                 validDates.push(dateStr);
                 earlyData.push(st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0');
@@ -1567,7 +1571,7 @@
                 document.getElementById('punctuality-trend-thead').innerHTML = '<tr><th class="p-1.5 border font-bold text-gray-700 bg-gray-100">Punctuality</th></tr>';
                 document.getElementById('punctuality-trend-tbody').innerHTML = '<tr><td class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
             } else {
-                let theadHTML = '<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-24 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Punctuality</th>';
+                let theadHTML = `<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-[90px] min-w-[90px] max-w-[90px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Punctuality</th>`;
                 validDates.forEach(d => {
                     theadHTML += `<th class="p-1.5 border font-bold text-gray-700 bg-gray-50">${d}</th>`;
                 });
@@ -1576,16 +1580,16 @@
 
                 let tbodyHTML = `
                 <tr class="hover:bg-yellow-50/50 transition-colors">
-                    <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Early (%)</td>
-                    ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-bold">${val}%</td>`).join('')}
+                    <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Early (%)</td>
+                    ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-medium">${val}%</td>`).join('')}
                 </tr>
                 <tr class="hover:bg-green-50/50 transition-colors">
-                    <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Time (%)</td>
-                    ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-bold">${val}%</td>`).join('')}
+                    <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">On-Time (%)</td>
+                    ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-medium">${val}%</td>`).join('')}
                 </tr>
                 <tr class="hover:bg-red-50/50 transition-colors">
-                    <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Late (%)</td>
-                    ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-bold">${val}%</td>`).join('')}
+                    <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Late (%)</td>
+                    ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-medium">${val}%</td>`).join('')}
                 </tr>`;
                 document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
             }
