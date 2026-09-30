@@ -1494,15 +1494,15 @@
 
                 let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
                 
-                // Adjusted Plotly margins to align with the table below and removed X-Axis text
+                // Adjusted Plotly margins to align with the table below and removed Y-Axis marks
                 let layout = { 
-                    margin: { t: 8, b: 5, l: 25, r: 25 }, 
+                    margin: { t: 8, b: 5, l: 0, r: 0 }, 
                     font: { family: 'Inter, sans-serif' }, 
                     paper_bgcolor: 'rgba(0,0,0,0)', 
                     plot_bgcolor: 'rgba(0,0,0,0)', 
                     xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, zeroline: false }, 
-                    yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', tickfont: { size: 9 }, zeroline: false }, 
-                    yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, tickfont: { size: 9 }, zeroline: false },
+                    yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, zeroline: false }, 
+                    yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
                     showlegend: false, hovermode: 'closest'
                 };
 
