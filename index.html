@@ -1553,11 +1553,9 @@ function renderPunctualityTrendChart() {
                 y: yBox, 
                 type: 'box', 
                 name: catName,
-                marker: { color: catColor, size: 1.5, opacity: 0.8 }, // Optimally smaller marker size
-                line: { color: catColor, width: 1 }, // Thinner box borders
-                fillcolor: Utils.getRgba(catColor, 0.2),
-                boxpoints: 'outliers',
-                jitter: 0.15, // Narrower scatter spread to fit vertical constraints
+                line: { color: catColor, width: 1.5 }, // Clean, crisp border
+                fillcolor: Utils.getRgba(catColor, 0.4), // Slightly stronger fill color for better visibility
+                boxpoints: false, // REMOVES ALL SCATTER DOTS
                 hoverinfo: 'none' 
             };
 
@@ -1566,8 +1564,8 @@ function renderPunctualityTrendChart() {
                 y: closes, 
                 type: 'scatter', 
                 mode: 'lines+markers', 
-                marker: { symbol: 'circle', size: 3, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, // Scaled down percentage markers
-                line: { color: '#9ca3af', width: 1, dash: 'dot' }, // Thinner percentage line
+                marker: { symbol: 'circle', size: 4, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, 
+                line: { color: '#9ca3af', width: 1.2, dash: 'dot' }, 
                 yaxis: 'y2', 
                 hoverinfo: 'none' 
             };
@@ -1575,13 +1573,14 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 5, b: 0, l: 0, r: 0 }, // Tight margins to maximize plot space
+                margin: { t: 5, b: 0, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
+                // REMOVES ALL GRID LINES AND ZEROLINES
+                xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: false, showticklabels: false, zeroline: false }, 
+                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
                 showlegend: false, hovermode: 'x' 
             };
 
