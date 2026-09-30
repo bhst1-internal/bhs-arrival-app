@@ -361,17 +361,17 @@
                     <!-- Trend View Redesigned -->
                     <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
                         <!-- Early Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
                             <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- On-Time Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
                             <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- Late Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
                             <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
                         </div>
@@ -380,13 +380,8 @@
                         <div id="punctuality-trend-table-container" class="w-full mt-2 border border-gray-200 rounded shadow-sm overflow-hidden shrink-0">
                             <div class="overflow-x-auto table-scroll">
                                 <table class="w-full text-[0.65rem] text-center whitespace-nowrap bg-white border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th class="sticky top-0 bg-gray-100 p-1.5 border font-bold text-gray-700">Date</th>
-                                            <th class="sticky top-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700">Early (%)</th>
-                                            <th class="sticky top-0 bg-green-50 p-1.5 border font-bold text-green-700">On-Time (%)</th>
-                                            <th class="sticky top-0 bg-red-50 p-1.5 border font-bold text-red-700">Late (%)</th>
-                                        </tr>
+                                    <thead id="punctuality-trend-thead">
+                                        <!-- Headers generated dynamically -->
                                     </thead>
                                     <tbody id="punctuality-trend-tbody" class="text-gray-800 font-medium"></tbody>
                                 </table>
@@ -1550,7 +1545,11 @@
             drawRangeChart('chart-trend-late', 'LATE', 'Late', '#ef4444');
 
             // Populate Punctuality Trend Table
-            let tableHTML = '';
+            let validDates = [];
+            let earlyData = [];
+            let onTimeData = [];
+            let lateData = [];
+
             Object.keys(dailyStats).sort().forEach(date => {
                 let st = dailyStats[date];
                 if(st.total === 0) return; // Skip days with no data matching filters
@@ -1558,19 +1557,38 @@
                 let dt = new Date(date);
                 let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
                 
-                let earlyPct = st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0';
-                let onTimePct = st['ON-TIME'].vals.length ? ((st['ON-TIME'].vals.length / st.total) * 100).toFixed(1) : '0.0';
-                let latePct = st.LATE.vals.length ? ((st.LATE.vals.length / st.total) * 100).toFixed(1) : '0.0';
-                
-                tableHTML += `
-                <tr>
-                    <td class="p-1.5 border border-gray-200 font-bold bg-gray-50 text-gray-700">${dateStr}</td>
-                    <td class="p-1.5 border border-gray-200 text-yellow-700 font-bold">${earlyPct}%</td>
-                    <td class="p-1.5 border border-gray-200 text-green-700 font-bold">${onTimePct}%</td>
-                    <td class="p-1.5 border border-gray-200 text-red-700 font-bold">${latePct}%</td>
-                </tr>`;
+                validDates.push(dateStr);
+                earlyData.push(st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0');
+                onTimeData.push(st['ON-TIME'].vals.length ? ((st['ON-TIME'].vals.length / st.total) * 100).toFixed(1) : '0.0');
+                lateData.push(st.LATE.vals.length ? ((st.LATE.vals.length / st.total) * 100).toFixed(1) : '0.0');
             });
-            document.getElementById('punctuality-trend-tbody').innerHTML = tableHTML || '<tr><td colspan="4" class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
+
+            if (validDates.length === 0) {
+                document.getElementById('punctuality-trend-thead').innerHTML = '<tr><th class="p-1.5 border font-bold text-gray-700 bg-gray-100">Punctuality</th></tr>';
+                document.getElementById('punctuality-trend-tbody').innerHTML = '<tr><td class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
+            } else {
+                let theadHTML = '<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-24 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Punctuality</th>';
+                validDates.forEach(d => {
+                    theadHTML += `<th class="p-1.5 border font-bold text-gray-700 bg-gray-50">${d}</th>`;
+                });
+                theadHTML += '</tr>';
+                document.getElementById('punctuality-trend-thead').innerHTML = theadHTML;
+
+                let tbodyHTML = `
+                <tr class="hover:bg-yellow-50/50 transition-colors">
+                    <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Early (%)</td>
+                    ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-bold">${val}%</td>`).join('')}
+                </tr>
+                <tr class="hover:bg-green-50/50 transition-colors">
+                    <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">On-Time (%)</td>
+                    ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-bold">${val}%</td>`).join('')}
+                </tr>
+                <tr class="hover:bg-red-50/50 transition-colors">
+                    <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Late (%)</td>
+                    ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-bold">${val}%</td>`).join('')}
+                </tr>`;
+                document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
+            }
         }
 
         function executeDashboardUpdate() {
