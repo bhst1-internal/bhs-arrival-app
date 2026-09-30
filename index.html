@@ -206,9 +206,17 @@
                 </div>
             </div>
             
-            <div class="bg-indigo-600 text-white p-4 rounded-lg shadow text-center">
+            <!-- UPDATED: Total Bags Handled KPI with Tooltip -->
+            <div class="bg-indigo-600 text-white p-4 rounded-lg shadow text-center relative group cursor-help transition hover:bg-indigo-700">
                 <h4 class="text-xs uppercase opacity-80">Total Bags Handled</h4>
                 <div id="kpi-bags" class="text-3xl font-bold mt-1">-</div>
+                <!-- Tooltip Container -->
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
+                    <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Bags by Terminal</div>
+                    <div id="tooltip-bags-mtb" class="mb-1"></div>
+                    <div id="tooltip-bags-sat"></div>
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+                </div>
             </div>
 
             <div class="bg-teal-600 text-white p-4 rounded-lg shadow text-center relative group cursor-help transition hover:bg-teal-700">
@@ -225,28 +233,45 @@
                 </div>
             </div>
 
-            <div class="bg-orange-600 text-white p-4 rounded-lg shadow text-center flex flex-col justify-center relative group cursor-help transition hover:bg-orange-700">
+            <!-- UPDATED: Avg Duration KPI with Split Tooltips -->
+            <div class="bg-orange-600 text-white p-4 rounded-lg shadow text-center flex flex-col justify-center relative transition hover:bg-orange-700">
                 <h4 class="text-xs uppercase opacity-80 mb-2 text-center">Avg Duration (min)</h4>
                 <div class="flex flex-row relative mt-1">
                     <div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-white/40 -translate-x-1/2"></div>
-                    <div class="flex-1 flex flex-col items-center justify-center">
+                    
+                    <!-- BR Side (Left) -->
+                    <div class="flex-1 flex flex-col items-center justify-center group cursor-help relative">
                         <div class="text-xs uppercase font-bold tracking-widest opacity-90 mb-0.5">BR</div>
                         <div id="kpi-duration" class="text-2xl font-bold">0.0</div>
+                        <!-- BR Tooltip -->
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
+                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Max BR Duration</div>
+                            <div id="tooltip-max-br-val" class="mb-1 text-lg font-bold text-orange-400 border-b border-gray-600 pb-1 mb-2">-</div>
+                            <div id="tooltip-max-br-flight" class="mb-1"></div>
+                            <div id="tooltip-max-br-sta" class="mb-1"></div>
+                            <div id="tooltip-max-br-time" class="mb-1"></div>
+                            <div id="tooltip-max-br-ac" class="mb-1"></div>
+                            <div id="tooltip-max-br-bags"></div>
+                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+                        </div>
                     </div>
-                    <div class="flex-1 flex flex-col items-center justify-center">
+					
+                <!-- Reclaim Side (Right) -->
+                    <div class="flex-1 flex flex-col items-center justify-center group cursor-help relative">
                         <div class="text-xs uppercase font-bold tracking-widest opacity-90 mb-0.5">Reclaim</div>
                         <div id="kpi-firstbag" class="text-2xl font-bold">0.0</div>
+                        <!-- Reclaim Tooltip -->
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
+                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Max Reclaim Duration</div>
+                            <div id="tooltip-max-rec-val" class="mb-1 text-lg font-bold text-red-400 border-b border-gray-600 pb-1 mb-2">-</div>
+                            <div id="tooltip-max-rec-flight" class="mb-1"></div>
+                            <div id="tooltip-max-rec-sta" class="mb-1"></div>
+                            <div id="tooltip-max-rec-time" class="mb-1"></div>
+                            <div id="tooltip-max-rec-ac" class="mb-1"></div>
+                            <div id="tooltip-max-rec-bags"></div>
+                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-max px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl pointer-events-none text-left border border-gray-700">
-                    <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Max Reclaim Duration</div>
-                    <div id="tooltip-max-val-display" class="mb-1 text-lg font-bold text-red-400 border-b border-gray-600 pb-1 mb-2">-</div>
-                    <div id="tooltip-max-flight" class="mb-1"></div>
-                    <div id="tooltip-max-sta" class="mb-1"></div>
-                    <div id="tooltip-max-time" class="mb-1"></div>
-                    <div id="tooltip-max-ac" class="mb-1"></div>
-                    <div id="tooltip-max-bags"></div>
-                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>
                 </div>
             </div>
             
