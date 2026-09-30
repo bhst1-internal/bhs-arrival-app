@@ -1574,15 +1574,15 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                // Reduced top margin to 0 to eliminate any remaining padding at the top boundary
-                margin: { t: 0, b: 5, l: 0, r: 0 }, 
+                // Restored 5px top margin to gently push the chart down
+                margin: { t: 5, b: 5, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
                 xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
                 
-                // Box plot y-axis: domain bottom boundary raised to 0.40 to condense the plot upwards
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.40, 1.00], showgrid: false, showticklabels: false, zeroline: false }, 
+                // Box plot y-axis: domain shifted down from [0.40, 1.00] to [0.35, 0.95]
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.35, 0.95], showgrid: false, showticklabels: false, zeroline: false }, 
                 
                 // Percentage y-axis: Remains spanning the whole background
                 yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
