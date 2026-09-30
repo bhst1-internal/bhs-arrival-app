@@ -1573,15 +1573,16 @@
 
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
+            // INTEGRATED LAYOUT CHANGES
             let layout = { 
-                margin: { t: 10, b: 20, l: 30, r: 35 }, 
+                margin: { t: 10, b: 0, l: 0, r: 0 }, // Adjusted to stretch and align
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: true, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: true, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: true, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
-                showlegend: false, hovermode: 'closest'
+                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, // hidden dates
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, // hidden left marks
+                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false }, // hidden right marks
+                showlegend: false, hovermode: 'x' // tooltips trigger uniformly
             };
 
             let chartEl = document.getElementById(divId);
