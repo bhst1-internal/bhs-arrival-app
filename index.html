@@ -1492,9 +1492,6 @@
         }
     }
 
-Replace the existing `renderPunctualityTrendChart()` function in your `<script>` section (located around line 980) with the updated version below. This completely integrates the layout changes to align the chart with the table headers, remove the axis marks, and improve the tooltip hover behavior.
-
-```javascript
     function renderPunctualityTrendChart() {
         let startT = Utils.getLocalStartOfDay(DOM['filter-start-date'].value), endT = Utils.getLocalEndOfDay(DOM['filter-end-date'].value);
         let targetStartDate = Math.ceil((endT - startT) / 86400000) <= 1 ? new Date(endT.getTime() - (6 * 86400000)).setHours(0,0,0,0) : startT;
@@ -1576,16 +1573,16 @@ Replace the existing `renderPunctualityTrendChart()` function in your `<script>`
 
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
-            // INTEGRATED LAYOUT CHANGES HERE
+            // INTEGRATED LAYOUT CHANGES
             let layout = { 
-                margin: { t: 10, b: 0, l: 0, r: 0 }, 
+                margin: { t: 10, b: 0, l: 0, r: 0 }, // Adjusted to stretch and align
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
-                showlegend: false, hovermode: 'x' 
+                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, tickangle: 0, tickfont: {color: '#9ca3af'} }, // hidden dates
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, // hidden left marks
+                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false }, // hidden right marks
+                showlegend: false, hovermode: 'x' // tooltips trigger uniformly
             };
 
             let chartEl = document.getElementById(divId);
