@@ -1515,17 +1515,65 @@
             }
         });
 
+        // 1. Gather Valid Dates first to ensure layout alignment matches the table columns exactly
+        let validDates = [];
+        let earlyData = [];
+        let onTimeData = [];
+        let lateData = [];
+
+        Object.keys(dailyStats).sort().forEach(date => {
+            let st = dailyStats[date];
+            if(st.total === 0) return; 
+            
+            let dt = new Date(date);
+            let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+            validDates.push(dateStr);
+            
+            earlyData.push(st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0');
+            onTimeData.push(st['ON-TIME'].vals.length ? ((st['ON-TIME'].vals.length / st.total) * 100).toFixed(1) : '0.0');
+            lateData.push(st.LATE.vals.length ? ((st.LATE.vals.length / st.total) * 100).toFixed(1) : '0.0');
+        });
+
+        if (validDates.length === 0) {
+            document.getElementById('punctuality-trend-thead').innerHTML = '<tr><th class="p-1.5 border font-bold text-gray-700 bg-gray-100">Punctuality</th></tr>';
+            document.getElementById('punctuality-trend-tbody').innerHTML = '<tr><td class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
+            ['chart-trend-early', 'chart-trend-ontime', 'chart-trend-late'].forEach(id => Plotly.purge(id));
+            return;
+        }
+
+        // 2. Render Punctuality Table Below First
+        let theadHTML = `<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-[90px] min-w-[90px] max-w-[90px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Punctuality</th>`;
+        validDates.forEach(d => { theadHTML += `<th class="p-1.5 border font-bold text-gray-700 bg-gray-50 text-center w-full">${d}</th>`; });
+        theadHTML += '</tr>';
+        document.getElementById('punctuality-trend-thead').innerHTML = theadHTML;
+
+        let tbodyHTML = `
+        <tr class="hover:bg-yellow-50/50 transition-colors">
+            <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Early (%)</td>
+            ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-medium text-center w-full">${val}%</td>`).join('')}
+        </tr>
+        <tr class="hover:bg-green-50/50 transition-colors">
+            <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">On-Time (%)</td>
+            ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-medium text-center w-full">${val}%</td>`).join('')}
+        </tr>
+        <tr class="hover:bg-red-50/50 transition-colors">
+            <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Late (%)</td>
+            ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-medium text-center w-full">${val}%</td>`).join('')}
+        </tr>`;
+        document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
+
+        // 3. Draw Synchronized Charts
         const drawRangeChart = (divId, catKey, catName, catColor) => {
             let xBox = [], yBox = [];
-            let xDates = [], closes = [], hoverData = [], maxDeviation = 0;
+            let closes = [], hoverData = [], maxDeviation = 0;
             
             Object.keys(dailyStats).sort().forEach(date => {
                 let st = dailyStats[date];
+                if(st.total === 0) return; // Skip empty dates like the table does
+
                 let vals = st[catKey].vals;
                 let dt = new Date(date);
                 let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-                
-                xDates.push(dateStr);
                 
                 if(vals.length > 0) {
                     let min = Math.min(...vals), max = Math.max(...vals);
@@ -1535,10 +1583,7 @@
                     let sortedVals = [...vals].sort((a,b) => a - b);
                     let median = sortedVals.length % 2 !== 0 ? sortedVals[Math.floor(sortedVals.length/2)] : (sortedVals[sortedVals.length/2 - 1] + sortedVals[sortedVals.length/2]) / 2;
 
-                    vals.forEach(val => {
-                        xBox.push(dateStr);
-                        yBox.push(val);
-                    });
+                    vals.forEach(val => { xBox.push(dateStr); yBox.push(val); });
                     
                     closes.push(percent);
                     hoverData.push({ min: Math.round(min), max: Math.round(max), median: Math.round(median), pct: percent.toFixed(1), count: vals.length, total: st.total });
@@ -1557,11 +1602,11 @@
                 fillcolor: Utils.getRgba(catColor, 0.2),
                 boxpoints: 'outliers',
                 jitter: 0.3,
-                hoverinfo: 'none' 
+                hoverinfo: 'none' // We use custom hovering below
             };
 
             let traceClose = { 
-                x: xDates, 
+                x: validDates, 
                 y: closes, 
                 type: 'scatter', 
                 mode: 'lines+markers', 
@@ -1573,15 +1618,39 @@
 
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
+            // Layout is optimized for 0 horizontal margin and no tick labels to strictly align with table columns
             let layout = { 
-                margin: { t: 10, b: 20, l: 30, r: 35 }, 
+                margin: { t: 5, b: 5, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: true, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: true, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: true, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
-                showlegend: false, hovermode: 'closest'
+                xaxis: { 
+                    type: 'category',
+                    categoryorder: 'array',
+                    categoryarray: validDates,
+                    showgrid: false, 
+                    showticklabels: false, // Hidden to allow columns to match below
+                    zeroline: false 
+                }, 
+                yaxis: { 
+                    type: isLog ? 'log' : 'linear', 
+                    autorange: true, 
+                    showgrid: true, 
+                    gridcolor: '#e5e7eb', 
+                    showticklabels: false, // Hidden labels
+                    zeroline: true, 
+                    zerolinecolor: '#d1d5db' 
+                }, 
+                yaxis2: { 
+                    overlaying: 'y', 
+                    side: 'right', 
+                    range: [0, 105], 
+                    showgrid: false, 
+                    showticklabels: false, // Hidden labels
+                    zeroline: false 
+                },
+                showlegend: false, 
+                hovermode: 'closest'
             };
 
             let chartEl = document.getElementById(divId);
@@ -1596,9 +1665,10 @@
 
             if (chartEl.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartEl.removeAllListeners(e)); }
             
+            // Custom Tooltip binding
             chartEl.on('plotly_hover', function(data) {
                 let pt = data.points[0];
-                let idx = xDates.indexOf(pt.x);
+                let idx = validDates.indexOf(pt.x);
                 if (idx === -1) return;
                 
                 let hd = hoverData[idx];
@@ -1615,201 +1685,18 @@
                     <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-teal-300 ml-1">${hd.pct}%</span></div>
                 `;
                 let tooltip = document.getElementById('trend-custom-tooltip');
-                tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
+                tooltip.style.left = data.event.pageX + 'px'; 
+                tooltip.style.top = (data.event.pageY - 10) + 'px'; 
+                tooltip.style.opacity = '1';
             });
             
             chartEl.on('plotly_unhover', function() { document.getElementById('trend-custom-tooltip').style.opacity = '0'; });
-            if (!chartEl._customMouseAttached) { chartEl.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('trend-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = evt.pageY + 'px'; } }); chartEl._customMouseAttached = true; }
+            if (!chartEl._customMouseAttached) { chartEl.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('trend-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 10) + 'px'; } }); chartEl._customMouseAttached = true; }
         };
 
         drawRangeChart('chart-trend-early', 'EARLY', 'Early', '#eab308');
         drawRangeChart('chart-trend-ontime', 'ON-TIME', 'On-Time', '#22c55e');
         drawRangeChart('chart-trend-late', 'LATE', 'Late', '#ef4444');
-
-        let validDates = [];
-        let earlyData = [];
-        let onTimeData = [];
-        let lateData = [];
-
-        Object.keys(dailyStats).sort().forEach(date => {
-            let st = dailyStats[date];
-            if(st.total === 0) return; 
-            
-            let dt = new Date(date);
-            let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
-            
-            validDates.push(dateStr);
-            earlyData.push(st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0');
-            onTimeData.push(st['ON-TIME'].vals.length ? ((st['ON-TIME'].vals.length / st.total) * 100).toFixed(1) : '0.0');
-            lateData.push(st.LATE.vals.length ? ((st.LATE.vals.length / st.total) * 100).toFixed(1) : '0.0');
-        });
-
-        if (validDates.length === 0) {
-            document.getElementById('punctuality-trend-thead').innerHTML = '<tr><th class="p-1.5 border font-bold text-gray-700 bg-gray-100">Punctuality</th></tr>';
-            document.getElementById('punctuality-trend-tbody').innerHTML = '<tr><td class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
-        } else {
-            let theadHTML = `<tr><th class="sticky left-0 bg-gray-100 p-1.5 border font-bold text-gray-700 z-10 w-[90px] min-w-[90px] max-w-[90px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Punctuality</th>`;
-            validDates.forEach(d => {
-                theadHTML += `<th class="p-1.5 border font-bold text-gray-700 bg-gray-50">${d}</th>`;
-            });
-            theadHTML += '</tr>';
-            document.getElementById('punctuality-trend-thead').innerHTML = theadHTML;
-
-            let tbodyHTML = `
-            <tr class="hover:bg-yellow-50/50 transition-colors">
-                <td class="sticky left-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Early (%)</td>
-                ${earlyData.map(val => `<td class="p-1.5 border border-gray-200 text-yellow-700 font-medium">${val}%</td>`).join('')}
-            </tr>
-            <tr class="hover:bg-green-50/50 transition-colors">
-                <td class="sticky left-0 bg-green-50 p-1.5 border font-bold text-green-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">On-Time (%)</td>
-                ${onTimeData.map(val => `<td class="p-1.5 border border-gray-200 text-green-700 font-medium">${val}%</td>`).join('')}
-            </tr>
-            <tr class="hover:bg-red-50/50 transition-colors">
-                <td class="sticky left-0 bg-red-50 p-1.5 border font-bold text-red-700 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate">Late (%)</td>
-                ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-medium">${val}%</td>`).join('')}
-            </tr>`;
-            document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
-        }
-    }
-
-    function renderReclaimTableRows() {
-        const tbody = document.getElementById('reclaim-tbody');
-        const dataToRender = AppState.tableData.slice(0, AppState.reclaimRenderCount);
-        
-        tbody.innerHTML = dataToRender.map(d => {
-            let acDisplay = d.Aircraft;
-            if (!d.isSim) { acDisplay = (acDisplay.toUpperCase().includes('NARROW') || acDisplay.toUpperCase() === 'NB') ? 'NB' : ((acDisplay.toUpperCase().includes('WIDE') || acDisplay.toUpperCase() === 'WB') ? 'WB' : acDisplay); }
-
-            let isSimOrShifted = d.isSim || d.isShifted, rowClass = isSimOrShifted ? 'bg-orange-50/60 border-orange-200' : '', textClass = isSimOrShifted ? 'text-orange-700 italic' : 'text-blue-600', circleClass = 'bg-gray-300';
-            
-            if (!isSimOrShifted && d.STA_Raw && d.ATA) {
-                let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
-                circleClass = diffMins > 10 ? 'bg-red-500' : (diffMins < -10 ? 'bg-yellow-400' : 'bg-green-500');
-            }
-            
-            let flightBox = d.isSim ? `<div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1"><span class="truncate">${d.Flight}</span></div>` : `<div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1"><span class="flight-action-trigger has-table-tooltip cursor-pointer truncate hover:underline ${textClass}" data-uid="${d.uid}" data-type="flight">${d.isShifted ? '<span class="text-[0.6rem] font-bold bg-orange-200 text-orange-800 px-1 rounded mr-1 not-italic">Shifted</span>' : ''}${d.Flight}</span>${acDisplay === 'NB' ? `<svg class="has-table-tooltip w-[10px] h-[10px] shrink-0 cursor-help ${circleClass.replace('bg-', 'text-')} hover:opacity-80 drop-shadow-sm" viewBox="0 0 10 10" data-uid="${d.uid}" data-type="status" style="overflow:visible;"><polygon points="5,0 0,10 10,10" fill="currentColor"></polygon></svg>` : `<span class="has-table-tooltip w-[10px] h-[10px] rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`}</div>`;
-
-            return `<tr class="${rowClass}" ${d.isSim ? 'title="Simulated Data based on FB BR input"' : (d.isShifted ? 'title="Shifted Flight"' : '')}><td class="whitespace-nowrap">${formatTableDate(d.ATA)}</td><td class="font-bold ${textClass} whitespace-nowrap p-0 m-0">${flightBox}</td><td class="whitespace-nowrap">${acDisplay}</td><td class="whitespace-nowrap font-medium ${isSimOrShifted ? 'text-orange-700' : 'text-gray-600'}">${d.Reclaim}</td><td class="${isSimOrShifted ? '' : 'bg-gray-50'} whitespace-nowrap">${d.BagCount}</td><td class="whitespace-nowrap ${isSimOrShifted ? 'font-semibold text-orange-600' : ''}">${d.BreakDownDisplay}</td><td class="whitespace-nowrap">${formatTableDate(d.FirstBagBRRaw)}</td><td class="whitespace-nowrap">${formatTableDate(d.LastBagBRRaw)}</td><td class="whitespace-nowrap ${d.DurationNum > 45 && !isSimOrShifted ? 'text-red-600 font-bold bg-red-50' : (isSimOrShifted ? '' : 'bg-gray-50')}">${d.DurationDisplay}</td><td class="whitespace-nowrap">${formatTableDate(d.FirstBagCLRaw)}</td><td class="whitespace-nowrap">${formatTableDate(d.LastBagCLRaw)}</td><td class="w-px whitespace-nowrap ${d.ReclaimDurationNum > 45 && !isSimOrShifted ? 'text-red-600 font-bold bg-red-50' : 'font-medium'}">${d.DurationReclaimDisplay}</td></tr>`;
-        }).join('');
-
-        const loadMoreBtn = document.getElementById('reclaim-load-more-container');
-        if (AppState.tableData.length > AppState.reclaimRenderCount) {
-            loadMoreBtn.classList.remove('hidden');
-        } else {
-            loadMoreBtn.classList.add('hidden');
-        }
-    }
-
-    function handleReclaimDetails(data, rcFilterVal, selectedReclaims) {
-        const detailSection = document.getElementById('reclaim-details-section');
-        if (rcFilterVal === 'ALL' && data.length === 0) { detailSection.classList.add('hidden'); return; }
-        detailSection.classList.remove('hidden'); document.getElementById('lbl-reclaim-name').innerText = rcFilterVal === 'ALL' ? 'All Reclaims' : selectedReclaims.join(', ');
-
-        let combinedTableData = data.map(d => ({ ...d, isSim: false })), totalAtaDiff = 0, countAtaDiff = 0, totalTransitDiff = 0, countTransitDiff = 0;
-        data.forEach(d => {
-            if(d.FirstBagBRRaw && d.ATA) { let diff = d.FirstBagBRRaw.getTime() - d.ATA.getTime(); if(diff >= 0) { totalAtaDiff += diff; countAtaDiff++; } }
-            if(d.FirstBagCLRaw && d.FirstBagBRRaw) { let diff = d.FirstBagCLRaw.getTime() - d.FirstBagBRRaw.getTime(); if(diff >= 0) { totalTransitDiff += diff; countTransitDiff++; } }
-        });
-
-        let avgAtaDiffMs = countAtaDiff > 0 ? totalAtaDiff / countAtaDiff : 30 * 60000, avgTransitDiffMs = countTransitDiff > 0 ? totalTransitDiff / countTransitDiff : 15 * 60000, timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
-        const startDateStr = DOM['filter-start-date'].value, endDateStr = DOM['filter-end-date'].value;
-
-        if (startDateStr && endDateStr) {
-            document.querySelectorAll('.sim-list-item').forEach(item => {
-                const timeStr = item.dataset.time, targetReclaim = item.dataset.reclaim || 'N/A', totalBags = ((parseInt(item.dataset.fnb) || 0) * (parseInt(item.dataset.bnb) || 0)) + ((parseInt(item.dataset.fwb) || 0) * (parseInt(item.dataset.bwb) || 0));
-                if (timeStr && totalBags > 0 && (selectedReclaims.length === 0 || selectedReclaims.includes('ALL') || selectedReclaims.includes(targetReclaim))) {
-                    let currentDay = Utils.getLocalStartOfDay(startDateStr), endDay = Utils.getLocalEndOfDay(endDateStr);
-                    while (currentDay <= endDay) {
-                        let [h, m] = timeStr.split(':').map(Number);
-                        let fbBrDate = new Date(currentDay); fbBrDate.setHours(h, m, 0, 0);
-                        let brDurMins = (totalBags * timePerBag) / 60, durStr = Utils.formatTimeExcel(brDurMins / 1440), acTypeStr = [];
-                        if(parseInt(item.dataset.fnb) > 0) acTypeStr.push('NB'); if(parseInt(item.dataset.fwb) > 0) acTypeStr.push('WB');
-                        combinedTableData.push({ isSim: true, ATA: new Date(fbBrDate.getTime() - avgAtaDiffMs), Flight: `Dummy Flight ${item.dataset.simId}`, Aircraft: acTypeStr.join(', '), Reclaim: targetReclaim, BagCount: totalBags, BreakDownDisplay: 'Simulated', FirstBagBRRaw: fbBrDate, LastBagBRRaw: new Date(fbBrDate.getTime() + (totalBags * timePerBag * 1000)), DurationDisplay: durStr, FirstBagCLRaw: new Date(fbBrDate.getTime() + avgTransitDiffMs), LastBagCLRaw: new Date(new Date(fbBrDate.getTime() + avgTransitDiffMs).getTime() + (totalBags * timePerBag * 1000)), DurationReclaimDisplay: durStr, DurationNum: brDurMins, ReclaimDurationNum: brDurMins });
-                        currentDay.setDate(currentDay.getDate() + 1);
-                    }
-                }
-            });
-        }
-
-        combinedTableData.sort((a, b) => a.ATA - b.ATA); 
-        AppState.tableData = combinedTableData;
-        
-        AppState.reclaimRenderCount = 500;
-        renderReclaimTableRows();
-    }
-
-    function renderKPIs(data) {
-        let totalBags = 0, totalBRDur = 0, totalRecDur = 0, nbCount = 0, wbCount = 0, maxFlight = data[0], maxBagFlight = data[0];
-        if(data.length > 0) {
-            data.forEach(d => {
-                totalBags += d.BagCount; totalBRDur += d.DurationNum; totalRecDur += d.ReclaimDurationNum;
-                let ac = (d.Aircraft || '').toUpperCase();
-                if(ac.includes('NARROW') || ac === 'NB') nbCount++; else if(ac.includes('WIDE') || ac === 'WB') wbCount++;
-                if(d.ReclaimDurationNum > maxFlight.ReclaimDurationNum) maxFlight = d;
-                if(d.BagCount > maxBagFlight.BagCount) maxBagFlight = d;
-            });
-        }
-
-        document.getElementById('kpi-flights').innerText = data.length > 0 ? data.length.toLocaleString() : '0';
-        document.getElementById('kpi-bags').innerText = data.length > 0 ? totalBags.toLocaleString() : '0';
-        document.getElementById('kpi-duration').innerText = data.length > 0 ? (totalBRDur / data.length).toFixed(1) : '0';
-        document.getElementById('kpi-firstbag').innerText = data.length > 0 ? (totalRecDur / data.length).toFixed(1) : '0';
-        document.getElementById('kpi-maxbags').innerText = maxBagFlight ? maxBagFlight.BagCount.toLocaleString() : '0';
-        document.getElementById('tooltip-flights-nb').innerHTML = `<span class="text-gray-400">Narrow Body:</span> <span class="font-bold text-green-400 ml-1">${nbCount}</span>`;
-        document.getElementById('tooltip-flights-wb').innerHTML = `<span class="text-gray-400">Wide Body:</span> <span class="font-bold text-yellow-400 ml-1">${wbCount}</span>`;
-
-        if(maxBagFlight) {
-            document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxBagFlight.Flight}</span>`;
-            document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.STA_Display}</span>`;
-            document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxBagFlight.STA_Raw, maxBagFlight.ATA)}`;
-            document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Aircraft}</span>`;
-            document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Reclaim}</span>`;
-        } else {
-            document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
-            document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span>`;
-            document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">-</span>`;
-            document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
-            document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">-</span>`;
-        }
-
-        if(maxFlight) {
-            document.getElementById('tooltip-max-val-display').innerText = `${maxFlight.ReclaimDurationNum.toFixed(1)} mins`;
-            document.getElementById('tooltip-max-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxFlight.Flight}</span>`;
-            document.getElementById('tooltip-max-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxFlight.STA_Display}</span>`;
-            document.getElementById('tooltip-max-time').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxFlight.STA_Raw, maxFlight.ATA)}`;
-            document.getElementById('tooltip-max-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxFlight.Aircraft}</span>`;
-            document.getElementById('tooltip-max-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${maxFlight.BagCount}</span>`;
-        }
-
-        const targetStatus = DOM['slicer-punctuality'].value === 'ALL' ? 'ON-TIME' : DOM['slicer-punctuality'].value;
-        const punctContainer = document.getElementById('kpi-punct-container');
-        punctContainer.className = `text-white p-4 rounded-lg shadow text-center relative group cursor-help transition ${targetStatus === 'LATE' ? 'bg-red-600 hover:bg-red-700' : (targetStatus === 'EARLY' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700')}`;
-        document.getElementById('kpi-punct-title').innerText = targetStatus === 'LATE' ? 'Most Late Flight' : (targetStatus === 'EARLY' ? 'Most Early Flight' : 'Most On-Time Flight');
-
-        let flightCounts = {}, mostRepeatedFlight = null, maxCount = 0;
-        data.forEach(d => {
-            if (d.Punctuality === targetStatus) {
-                if (!flightCounts[d.Flight]) flightCounts[d.Flight] = { count: 0, bags: [], diffs: [], dates: new Set(), reclaims: new Set(), acs: new Set() };
-                flightCounts[d.Flight].count++; flightCounts[d.Flight].bags.push(d.BagCount); flightCounts[d.Flight].diffs.push(d.PunctDiffMins);
-                flightCounts[d.Flight].dates.add(Utils.formatCustomDate(d.ATA).split('&nbsp;')[0]); flightCounts[d.Flight].reclaims.add(d.Reclaim); flightCounts[d.Flight].acs.add(d.Aircraft);
-            }
-        });
-
-        for (let fl in flightCounts) { if (flightCounts[fl].count > maxCount) { maxCount = flightCounts[fl].count; mostRepeatedFlight = fl; } }
-
-        if (mostRepeatedFlight) {
-            let stats = flightCounts[mostRepeatedFlight], dateArr = Array.from(stats.dates), avgDiff = stats.diffs.reduce((a,b)=>a+b,0) / stats.diffs.length;
-            document.getElementById('kpi-punctuality-flight').innerText = mostRepeatedFlight;
-            document.getElementById('tooltip-punct-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${mostRepeatedFlight}</span>`;
-            document.getElementById('tooltip-punct-dates').innerHTML = `<span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">${dateArr.length > 3 ? dateArr.slice(0,3).join(', ') + '...' : dateArr.join(', ')} (${stats.count}x)</span>`;
-            document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 ${avgDiff > 10 ? 'text-red-400' : (avgDiff < -10 ? 'text-yellow-400' : 'text-green-400')}">${avgDiff > 10 || avgDiff > 0 && avgDiff <= 10 ? `Late by ${Math.round(avgDiff)} mins` : (avgDiff < -10 || avgDiff < 0 && avgDiff >= -10 ? `Early by ${Math.abs(Math.round(avgDiff))} mins` : 'On Time')}</span>`;
-            document.getElementById('tooltip-punct-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${Array.from(stats.reclaims).join(', ')}</span>`;
-            document.getElementById('tooltip-punct-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${Array.from(stats.acs).join(', ')}</span>`;
-            document.getElementById('tooltip-punct-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${Math.min(...stats.bags)} - ${Math.max(...stats.bags)}</span>`;
-        } else {
-            document.getElementById('kpi-punctuality-flight').innerText = '-';
-            ['flight', 'dates', 'avgtime', 'reclaim', 'ac', 'bags'].forEach(id => document.getElementById(`tooltip-punct-${id}`).innerHTML = `<span class="text-gray-400">${id.charAt(0).toUpperCase() + id.slice(1)}:</span> <span class="font-bold ml-1 text-white">-</span>`);
-        }
     }
 
     function renderTimeline(data) {
