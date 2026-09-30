@@ -2143,6 +2143,13 @@
                 }
 
                 if(document.getElementById('chart-br-bar')) {
+                    // Helper function to extract base BR name (e.g., "BR15R" -> "BR15")
+                    const getBaseBR = (br) => {
+                        if (!br) return 'Unknown';
+                        let match = br.match(/^([a-zA-Z]+\s*\d+)/);
+                        return match ? match[1].toUpperCase() : br.toUpperCase();
+                    };
+
                     let brMetrics = {};
                     data.forEach(d => {
                         let br = d.BreakDownDisplay || 'Unknown'; 
@@ -2156,31 +2163,62 @@
                     });
 
                     let brKeys = Object.keys(brMetrics);
-                    let sortVal = document.getElementById('br-sort') ? document.getElementById('br-sort').value : 'bags-desc';
-                    if (sortVal === 'bags-desc') brKeys.sort((a,b) => brMetrics[b].bags - brMetrics[a].bags); 
-                    else if (sortVal === 'bags-asc') brKeys.sort((a,b) => brMetrics[a].bags - brMetrics[b].bags); 
-                    else if (sortVal === 'alpha') brKeys.sort((a,b) => a.localeCompare(b));
                     
-                    let customdata = brKeys.map(k => { 
-                        let m = brMetrics[k]; 
-                        return [ m.flights, m.nb, m.wb, m.bags.toLocaleString(), m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0', m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0', m.maxRecDur.toFixed(1) ]; 
+                    // Aggregate bags per base BR for sorting the x-axis
+                    let baseBRTotals = {};
+                    brKeys.forEach(k => {
+                        let base = getBaseBR(k);
+                        if (!baseBRTotals[base]) baseBRTotals[base] = 0;
+                        baseBRTotals[base] += brMetrics[k].bags;
                     });
 
-                    let brColors = brKeys.map((k, i) => palette[i % palette.length]);
+                    let baseBRKeys = Object.keys(baseBRTotals);
+                    let sortVal = document.getElementById('br-sort') ? document.getElementById('br-sort').value : 'bags-desc';
+                    if (sortVal === 'bags-desc') baseBRKeys.sort((a,b) => baseBRTotals[b] - baseBRTotals[a]); 
+                    else if (sortVal === 'bags-asc') baseBRKeys.sort((a,b) => baseBRTotals[a] - baseBRTotals[b]); 
+                    else if (sortVal === 'alpha') baseBRKeys.sort((a,b) => a.localeCompare(b));
 
-                    Plotly.react('chart-br-bar', [{ 
-                        x: brKeys, 
-                        y: brKeys.map(k => brMetrics[k].bags), 
-                        customdata: customdata, hoverinfo: 'none', type: 'bar', 
-                        text: brKeys.map(k => brMetrics[k].bags.toLocaleString()), 
-                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, constraintext: 'none', 
-                        textfont: { color: '#1f2937', weight: 'bold', size: 11 }, 
-                        marker: { color: brColors.map(c => getRgba(c, 0.35)), line: { color: brColors, width: 1.5 } } 
-                    }], { 
+                    // Create individual stacked traces for each exact BR name
+                    let traces = brKeys.map((k, i) => {
+                        let m = brMetrics[k];
+                        let base = getBaseBR(k);
+                        let suffix = k.substring(base.length).trim();
+                        let textLabel = suffix ? `${suffix}: ${m.bags.toLocaleString()}` : m.bags.toLocaleString();
+                        
+                        let customdata = [[ k, m.flights, m.nb, m.wb, m.bags.toLocaleString(), m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0', m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0', m.maxRecDur.toFixed(1) ]];
+                        
+                        return {
+                            x: [base],
+                            y: [m.bags],
+                            customdata: customdata,
+                            hoverinfo: 'none',
+                            type: 'bar',
+                            name: k,
+                            text: [textLabel],
+                            textposition: 'inside',
+                            insidetextanchor: 'middle',
+                            textangle: 0,
+                            constraintext: 'none',
+                            textfont: { color: '#ffffff', weight: 'bold', size: 10 },
+                            marker: { 
+                                color: getRgba(palette[i % palette.length], 0.85), 
+                                line: { color: palette[i % palette.length], width: 1 } 
+                            }
+                        };
+                    });
+
+                    Plotly.react('chart-br-bar', traces, { 
                         margin: { t: 10, l: 60, r: 20, b: 40 }, 
                         font: { family: 'Inter, sans-serif' }, 
                         paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', 
-                        xaxis: { title: 'BR Name', tickangle: 0 }, 
+                        barmode: 'stack',
+                        showlegend: false, // Hidden to prevent clutter
+                        xaxis: { 
+                            title: 'BR Number', 
+                            tickangle: 0, 
+                            categoryorder: 'array', 
+                            categoryarray: baseBRKeys 
+                        }, 
                         yaxis: { title: 'Total Bags Handled', automargin: true }, 
                         bargap: 0.15 
                     }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'BR_Load', scale: 2 } });
@@ -2197,14 +2235,15 @@
 
                     chartBrDiv.on('plotly_hover', function(data) {
                         let pt = data.points[0]; if (!pt || !pt.customdata) return;
+                        
                         document.getElementById('br-tooltip-content').innerHTML = `
-                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">BR Details: <span class="text-blue-400">${pt.x}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${pt.customdata[0]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${pt.customdata[1]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${pt.customdata[2]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${pt.customdata[3]}</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[4]} min</span></div>
-                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[5]} min</span></div>
-                            <div><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${pt.customdata[6]} min</span></div>
+                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">BR Details: <span class="text-blue-400">${pt.customdata[0]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${pt.customdata[1]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${pt.customdata[2]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${pt.customdata[3]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${pt.customdata[4]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[5]} min</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[6]} min</span></div>
+                            <div><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${pt.customdata[7]} min</span></div>
                         `;
                         let tooltip = document.getElementById('br-custom-tooltip');
                         tooltip.style.left = data.event.pageX + 'px'; 
