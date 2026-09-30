@@ -361,17 +361,17 @@
                     <!-- Trend View Redesigned -->
                     <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
                         <!-- Early Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[120px] w-full shrink-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
                             <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- On-Time Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[120px] w-full shrink-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
                             <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- Late Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[60px] max-h-[75px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[120px] w-full shrink-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
                             <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
                         </div>
@@ -1516,61 +1516,76 @@
         });
 
         const drawRangeChart = (divId, catKey, catName, catColor) => {
-            let xDates = [], lows = [], highs = [], closes = [], hoverData = [], maxDeviation = 0;
+            let xBox = [], yBox = [];
+            let xDates = [], closes = [], hoverData = [], maxDeviation = 0;
             
             Object.keys(dailyStats).sort().forEach(date => {
-                let st = dailyStats[date], vals = st[catKey].vals, dt = new Date(date);
-                xDates.push(`${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`);
+                let st = dailyStats[date];
+                let vals = st[catKey].vals;
+                let dt = new Date(date);
+                let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+                
+                xDates.push(dateStr);
                 
                 if(vals.length > 0) {
                     let min = Math.min(...vals), max = Math.max(...vals);
                     let percent = (vals.length / st.total) * 100;
                     if (max > maxDeviation) maxDeviation = max;
                     
-                    lows.push(min); 
-                    highs.push(max); 
+                    let sortedVals = [...vals].sort((a,b) => a - b);
+                    let median = sortedVals.length % 2 !== 0 ? sortedVals[Math.floor(sortedVals.length/2)] : (sortedVals[sortedVals.length/2 - 1] + sortedVals[sortedVals.length/2]) / 2;
+
+                    vals.forEach(val => {
+                        xBox.push(dateStr);
+                        yBox.push(val);
+                    });
+                    
                     closes.push(percent);
-                    hoverData.push({ min: Math.round(min), max: Math.round(max), pct: percent.toFixed(1), count: vals.length, total: st.total });
+                    hoverData.push({ min: Math.round(min), max: Math.round(max), median: Math.round(median), pct: percent.toFixed(1), count: vals.length, total: st.total });
                 } else {
-                    lows.push(null); highs.push(null); closes.push(null); hoverData.push(null);
+                    closes.push(null); hoverData.push(null);
                 }
             });
 
-            let hl_x = [], hl_y = [];
-            for (let i = 0; i < xDates.length; i++) {
-                if (highs[i] !== null) {
-                    hl_x.push(xDates[i], xDates[i], null);
-                    hl_y.push(lows[i], highs[i], null);
-                }
-            }
-            
-            let traceHL = { 
-                x: hl_x, y: hl_y, type: 'scatter', mode: 'lines', 
-                line: { color: Utils.getRgba(catColor, 0.4), width: 6 }, 
+            let traceBox = { 
+                x: xBox, 
+                y: yBox, 
+                type: 'box', 
+                name: catName,
+                marker: { color: catColor, size: 3, opacity: 0.7 },
+                line: { color: catColor, width: 1.5 },
+                fillcolor: Utils.getRgba(catColor, 0.2),
+                boxpoints: 'outliers',
+                jitter: 0.3,
                 hoverinfo: 'none' 
             };
 
             let traceClose = { 
-                x: xDates, y: closes, type: 'scatter', mode: 'markers', 
-                marker: { symbol: 'line-ew', size: 16, color: catColor, line: { color: catColor, width: 3 } }, 
-                yaxis: 'y2', hoverinfo: 'none' 
+                x: xDates, 
+                y: closes, 
+                type: 'scatter', 
+                mode: 'lines+markers', 
+                marker: { symbol: 'circle', size: 6, color: '#6b7280', line: { color: '#ffffff', width: 1 } }, 
+                line: { color: '#9ca3af', width: 1.5, dash: 'dot' },
+                yaxis: 'y2', 
+                hoverinfo: 'none' 
             };
 
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 8, b: 5, l: 0, r: 0 }, 
-                font: { family: 'Inter, sans-serif' }, 
+                margin: { t: 10, b: 20, l: 30, r: 35 }, 
+                font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: false, zeroline: false }, 
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: false, zeroline: false }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
+                xaxis: { showgrid: true, gridcolor: '#f3f4f6', showticklabels: true, tickangle: 0, tickfont: {color: '#9ca3af'} }, 
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: true, gridcolor: '#e5e7eb', showticklabels: true, tickfont: {color: '#9ca3af'}, zeroline: true, zerolinecolor: '#d1d5db' }, 
+                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: true, tickfont: {color: '#9ca3af'}, tickformat: '.0f', ticksuffix: '%', zeroline: false },
                 showlegend: false, hovermode: 'closest'
             };
 
             let chartEl = document.getElementById(divId);
-            Plotly.react(divId, [traceHL, traceClose], layout, { responsive: true, displayModeBar: false });
+            Plotly.react(divId, [traceBox, traceClose], layout, { responsive: true, displayModeBar: false });
             
             if (!document.getElementById('trend-custom-tooltip')) {
                 let tooltip = document.createElement('div'); tooltip.id = 'trend-custom-tooltip';
@@ -1582,7 +1597,7 @@
             if (chartEl.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartEl.removeAllListeners(e)); }
             
             chartEl.on('plotly_hover', function(data) {
-                let pt = data.points.find(p => p.curveNumber === 1) || data.points[0];
+                let pt = data.points[0];
                 let idx = xDates.indexOf(pt.x);
                 if (idx === -1) return;
                 
@@ -1595,7 +1610,8 @@
                     <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Trend: <span class="text-white">${catName}</span></div>
                     <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-blue-300 ml-1">${pt.x}</span></div>
                     <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-300 ml-1">${hd.count}</span></div>
-                    <div class="mb-1"><span class="text-gray-400">Range:</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max} mins</span></div>
+                    <div class="mb-1"><span class="text-gray-400">Distribution (Min-Max):</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max} mins</span></div>
+                    <div class="mb-1"><span class="text-gray-400">Median:</span> <span class="font-bold text-white ml-1">${hd.median} mins</span></div>
                     <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-teal-300 ml-1">${hd.pct}%</span></div>
                 `;
                 let tooltip = document.getElementById('trend-custom-tooltip');
@@ -1653,6 +1669,146 @@
                 ${lateData.map(val => `<td class="p-1.5 border border-gray-200 text-red-700 font-medium">${val}%</td>`).join('')}
             </tr>`;
             document.getElementById('punctuality-trend-tbody').innerHTML = tbodyHTML;
+        }
+    }
+
+    function renderReclaimTableRows() {
+        const tbody = document.getElementById('reclaim-tbody');
+        const dataToRender = AppState.tableData.slice(0, AppState.reclaimRenderCount);
+        
+        tbody.innerHTML = dataToRender.map(d => {
+            let acDisplay = d.Aircraft;
+            if (!d.isSim) { acDisplay = (acDisplay.toUpperCase().includes('NARROW') || acDisplay.toUpperCase() === 'NB') ? 'NB' : ((acDisplay.toUpperCase().includes('WIDE') || acDisplay.toUpperCase() === 'WB') ? 'WB' : acDisplay); }
+
+            let isSimOrShifted = d.isSim || d.isShifted, rowClass = isSimOrShifted ? 'bg-orange-50/60 border-orange-200' : '', textClass = isSimOrShifted ? 'text-orange-700 italic' : 'text-blue-600', circleClass = 'bg-gray-300';
+            
+            if (!isSimOrShifted && d.STA_Raw && d.ATA) {
+                let diffMins = (d.ATA.getTime() - d.STA_Raw.getTime()) / 60000;
+                circleClass = diffMins > 10 ? 'bg-red-500' : (diffMins < -10 ? 'bg-yellow-400' : 'bg-green-500');
+            }
+            
+            let flightBox = d.isSim ? `<div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1"><span class="truncate">${d.Flight}</span></div>` : `<div class="flex justify-between items-center w-full min-w-[90px] gap-2 px-1"><span class="flight-action-trigger has-table-tooltip cursor-pointer truncate hover:underline ${textClass}" data-uid="${d.uid}" data-type="flight">${d.isShifted ? '<span class="text-[0.6rem] font-bold bg-orange-200 text-orange-800 px-1 rounded mr-1 not-italic">Shifted</span>' : ''}${d.Flight}</span>${acDisplay === 'NB' ? `<svg class="has-table-tooltip w-[10px] h-[10px] shrink-0 cursor-help ${circleClass.replace('bg-', 'text-')} hover:opacity-80 drop-shadow-sm" viewBox="0 0 10 10" data-uid="${d.uid}" data-type="status" style="overflow:visible;"><polygon points="5,0 0,10 10,10" fill="currentColor"></polygon></svg>` : `<span class="has-table-tooltip w-[10px] h-[10px] rounded-full shrink-0 shadow-sm cursor-help ${circleClass} hover:opacity-80" data-uid="${d.uid}" data-type="status"></span>`}</div>`;
+
+            return `<tr class="${rowClass}" ${d.isSim ? 'title="Simulated Data based on FB BR input"' : (d.isShifted ? 'title="Shifted Flight"' : '')}><td class="whitespace-nowrap">${formatTableDate(d.ATA)}</td><td class="font-bold ${textClass} whitespace-nowrap p-0 m-0">${flightBox}</td><td class="whitespace-nowrap">${acDisplay}</td><td class="whitespace-nowrap font-medium ${isSimOrShifted ? 'text-orange-700' : 'text-gray-600'}">${d.Reclaim}</td><td class="${isSimOrShifted ? '' : 'bg-gray-50'} whitespace-nowrap">${d.BagCount}</td><td class="whitespace-nowrap ${isSimOrShifted ? 'font-semibold text-orange-600' : ''}">${d.BreakDownDisplay}</td><td class="whitespace-nowrap">${formatTableDate(d.FirstBagBRRaw)}</td><td class="whitespace-nowrap">${formatTableDate(d.LastBagBRRaw)}</td><td class="whitespace-nowrap ${d.DurationNum > 45 && !isSimOrShifted ? 'text-red-600 font-bold bg-red-50' : (isSimOrShifted ? '' : 'bg-gray-50')}">${d.DurationDisplay}</td><td class="whitespace-nowrap">${formatTableDate(d.FirstBagCLRaw)}</td><td class="whitespace-nowrap">${formatTableDate(d.LastBagCLRaw)}</td><td class="w-px whitespace-nowrap ${d.ReclaimDurationNum > 45 && !isSimOrShifted ? 'text-red-600 font-bold bg-red-50' : 'font-medium'}">${d.DurationReclaimDisplay}</td></tr>`;
+        }).join('');
+
+        const loadMoreBtn = document.getElementById('reclaim-load-more-container');
+        if (AppState.tableData.length > AppState.reclaimRenderCount) {
+            loadMoreBtn.classList.remove('hidden');
+        } else {
+            loadMoreBtn.classList.add('hidden');
+        }
+    }
+
+    function handleReclaimDetails(data, rcFilterVal, selectedReclaims) {
+        const detailSection = document.getElementById('reclaim-details-section');
+        if (rcFilterVal === 'ALL' && data.length === 0) { detailSection.classList.add('hidden'); return; }
+        detailSection.classList.remove('hidden'); document.getElementById('lbl-reclaim-name').innerText = rcFilterVal === 'ALL' ? 'All Reclaims' : selectedReclaims.join(', ');
+
+        let combinedTableData = data.map(d => ({ ...d, isSim: false })), totalAtaDiff = 0, countAtaDiff = 0, totalTransitDiff = 0, countTransitDiff = 0;
+        data.forEach(d => {
+            if(d.FirstBagBRRaw && d.ATA) { let diff = d.FirstBagBRRaw.getTime() - d.ATA.getTime(); if(diff >= 0) { totalAtaDiff += diff; countAtaDiff++; } }
+            if(d.FirstBagCLRaw && d.FirstBagBRRaw) { let diff = d.FirstBagCLRaw.getTime() - d.FirstBagBRRaw.getTime(); if(diff >= 0) { totalTransitDiff += diff; countTransitDiff++; } }
+        });
+
+        let avgAtaDiffMs = countAtaDiff > 0 ? totalAtaDiff / countAtaDiff : 30 * 60000, avgTransitDiffMs = countTransitDiff > 0 ? totalTransitDiff / countTransitDiff : 15 * 60000, timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
+        const startDateStr = DOM['filter-start-date'].value, endDateStr = DOM['filter-end-date'].value;
+
+        if (startDateStr && endDateStr) {
+            document.querySelectorAll('.sim-list-item').forEach(item => {
+                const timeStr = item.dataset.time, targetReclaim = item.dataset.reclaim || 'N/A', totalBags = ((parseInt(item.dataset.fnb) || 0) * (parseInt(item.dataset.bnb) || 0)) + ((parseInt(item.dataset.fwb) || 0) * (parseInt(item.dataset.bwb) || 0));
+                if (timeStr && totalBags > 0 && (selectedReclaims.length === 0 || selectedReclaims.includes('ALL') || selectedReclaims.includes(targetReclaim))) {
+                    let currentDay = Utils.getLocalStartOfDay(startDateStr), endDay = Utils.getLocalEndOfDay(endDateStr);
+                    while (currentDay <= endDay) {
+                        let [h, m] = timeStr.split(':').map(Number);
+                        let fbBrDate = new Date(currentDay); fbBrDate.setHours(h, m, 0, 0);
+                        let brDurMins = (totalBags * timePerBag) / 60, durStr = Utils.formatTimeExcel(brDurMins / 1440), acTypeStr = [];
+                        if(parseInt(item.dataset.fnb) > 0) acTypeStr.push('NB'); if(parseInt(item.dataset.fwb) > 0) acTypeStr.push('WB');
+                        combinedTableData.push({ isSim: true, ATA: new Date(fbBrDate.getTime() - avgAtaDiffMs), Flight: `Dummy Flight ${item.dataset.simId}`, Aircraft: acTypeStr.join(', '), Reclaim: targetReclaim, BagCount: totalBags, BreakDownDisplay: 'Simulated', FirstBagBRRaw: fbBrDate, LastBagBRRaw: new Date(fbBrDate.getTime() + (totalBags * timePerBag * 1000)), DurationDisplay: durStr, FirstBagCLRaw: new Date(fbBrDate.getTime() + avgTransitDiffMs), LastBagCLRaw: new Date(new Date(fbBrDate.getTime() + avgTransitDiffMs).getTime() + (totalBags * timePerBag * 1000)), DurationReclaimDisplay: durStr, DurationNum: brDurMins, ReclaimDurationNum: brDurMins });
+                        currentDay.setDate(currentDay.getDate() + 1);
+                    }
+                }
+            });
+        }
+
+        combinedTableData.sort((a, b) => a.ATA - b.ATA); 
+        AppState.tableData = combinedTableData;
+        
+        AppState.reclaimRenderCount = 500;
+        renderReclaimTableRows();
+    }
+
+    function renderKPIs(data) {
+        let totalBags = 0, totalBRDur = 0, totalRecDur = 0, nbCount = 0, wbCount = 0, maxFlight = data[0], maxBagFlight = data[0];
+        if(data.length > 0) {
+            data.forEach(d => {
+                totalBags += d.BagCount; totalBRDur += d.DurationNum; totalRecDur += d.ReclaimDurationNum;
+                let ac = (d.Aircraft || '').toUpperCase();
+                if(ac.includes('NARROW') || ac === 'NB') nbCount++; else if(ac.includes('WIDE') || ac === 'WB') wbCount++;
+                if(d.ReclaimDurationNum > maxFlight.ReclaimDurationNum) maxFlight = d;
+                if(d.BagCount > maxBagFlight.BagCount) maxBagFlight = d;
+            });
+        }
+
+        document.getElementById('kpi-flights').innerText = data.length > 0 ? data.length.toLocaleString() : '0';
+        document.getElementById('kpi-bags').innerText = data.length > 0 ? totalBags.toLocaleString() : '0';
+        document.getElementById('kpi-duration').innerText = data.length > 0 ? (totalBRDur / data.length).toFixed(1) : '0';
+        document.getElementById('kpi-firstbag').innerText = data.length > 0 ? (totalRecDur / data.length).toFixed(1) : '0';
+        document.getElementById('kpi-maxbags').innerText = maxBagFlight ? maxBagFlight.BagCount.toLocaleString() : '0';
+        document.getElementById('tooltip-flights-nb').innerHTML = `<span class="text-gray-400">Narrow Body:</span> <span class="font-bold text-green-400 ml-1">${nbCount}</span>`;
+        document.getElementById('tooltip-flights-wb').innerHTML = `<span class="text-gray-400">Wide Body:</span> <span class="font-bold text-yellow-400 ml-1">${wbCount}</span>`;
+
+        if(maxBagFlight) {
+            document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxBagFlight.Flight}</span>`;
+            document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.STA_Display}</span>`;
+            document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxBagFlight.STA_Raw, maxBagFlight.ATA)}`;
+            document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Aircraft}</span>`;
+            document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${maxBagFlight.Reclaim}</span>`;
+        } else {
+            document.getElementById('tooltip-mb-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">-</span>`;
+            document.getElementById('tooltip-mb-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">-</span>`;
+            document.getElementById('tooltip-mb-ata').innerHTML = `<span class="text-gray-400">ATA:</span> <span class="font-bold ml-1 text-white">-</span>`;
+            document.getElementById('tooltip-mb-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">-</span>`;
+            document.getElementById('tooltip-mb-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">-</span>`;
+        }
+
+        if(maxFlight) {
+            document.getElementById('tooltip-max-val-display').innerText = `${maxFlight.ReclaimDurationNum.toFixed(1)} mins`;
+            document.getElementById('tooltip-max-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${maxFlight.Flight}</span>`;
+            document.getElementById('tooltip-max-sta').innerHTML = `<span class="text-gray-400">STA:</span> <span class="font-bold ml-1 text-white">${maxFlight.STA_Display}</span>`;
+            document.getElementById('tooltip-max-time').innerHTML = `<span class="text-gray-400">ATA:</span> ${getAtaColorHtml(maxFlight.STA_Raw, maxFlight.ATA)}`;
+            document.getElementById('tooltip-max-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${maxFlight.Aircraft}</span>`;
+            document.getElementById('tooltip-max-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${maxFlight.BagCount}</span>`;
+        }
+
+        const targetStatus = DOM['slicer-punctuality'].value === 'ALL' ? 'ON-TIME' : DOM['slicer-punctuality'].value;
+        const punctContainer = document.getElementById('kpi-punct-container');
+        punctContainer.className = `text-white p-4 rounded-lg shadow text-center relative group cursor-help transition ${targetStatus === 'LATE' ? 'bg-red-600 hover:bg-red-700' : (targetStatus === 'EARLY' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700')}`;
+        document.getElementById('kpi-punct-title').innerText = targetStatus === 'LATE' ? 'Most Late Flight' : (targetStatus === 'EARLY' ? 'Most Early Flight' : 'Most On-Time Flight');
+
+        let flightCounts = {}, mostRepeatedFlight = null, maxCount = 0;
+        data.forEach(d => {
+            if (d.Punctuality === targetStatus) {
+                if (!flightCounts[d.Flight]) flightCounts[d.Flight] = { count: 0, bags: [], diffs: [], dates: new Set(), reclaims: new Set(), acs: new Set() };
+                flightCounts[d.Flight].count++; flightCounts[d.Flight].bags.push(d.BagCount); flightCounts[d.Flight].diffs.push(d.PunctDiffMins);
+                flightCounts[d.Flight].dates.add(Utils.formatCustomDate(d.ATA).split('&nbsp;')[0]); flightCounts[d.Flight].reclaims.add(d.Reclaim); flightCounts[d.Flight].acs.add(d.Aircraft);
+            }
+        });
+
+        for (let fl in flightCounts) { if (flightCounts[fl].count > maxCount) { maxCount = flightCounts[fl].count; mostRepeatedFlight = fl; } }
+
+        if (mostRepeatedFlight) {
+            let stats = flightCounts[mostRepeatedFlight], dateArr = Array.from(stats.dates), avgDiff = stats.diffs.reduce((a,b)=>a+b,0) / stats.diffs.length;
+            document.getElementById('kpi-punctuality-flight').innerText = mostRepeatedFlight;
+            document.getElementById('tooltip-punct-flight').innerHTML = `<span class="text-gray-400">Flight:</span> <span class="font-bold ml-1 text-blue-300">${mostRepeatedFlight}</span>`;
+            document.getElementById('tooltip-punct-dates').innerHTML = `<span class="text-gray-400">Dates:</span> <span class="font-bold ml-1 text-white">${dateArr.length > 3 ? dateArr.slice(0,3).join(', ') + '...' : dateArr.join(', ')} (${stats.count}x)</span>`;
+            document.getElementById('tooltip-punct-avgtime').innerHTML = `<span class="text-gray-400">Avg Time:</span> <span class="font-bold ml-1 ${avgDiff > 10 ? 'text-red-400' : (avgDiff < -10 ? 'text-yellow-400' : 'text-green-400')}">${avgDiff > 10 || avgDiff > 0 && avgDiff <= 10 ? `Late by ${Math.round(avgDiff)} mins` : (avgDiff < -10 || avgDiff < 0 && avgDiff >= -10 ? `Early by ${Math.abs(Math.round(avgDiff))} mins` : 'On Time')}</span>`;
+            document.getElementById('tooltip-punct-reclaim').innerHTML = `<span class="text-gray-400">Reclaim:</span> <span class="font-bold ml-1 text-white">${Array.from(stats.reclaims).join(', ')}</span>`;
+            document.getElementById('tooltip-punct-ac').innerHTML = `<span class="text-gray-400">Aircraft:</span> <span class="font-bold ml-1 text-white">${Array.from(stats.acs).join(', ')}</span>`;
+            document.getElementById('tooltip-punct-bags').innerHTML = `<span class="text-gray-400">Bags:</span> <span class="font-bold ml-1 text-white">${Math.min(...stats.bags)} - ${Math.max(...stats.bags)}</span>`;
+        } else {
+            document.getElementById('kpi-punctuality-flight').innerText = '-';
+            ['flight', 'dates', 'avgtime', 'reclaim', 'ac', 'bags'].forEach(id => document.getElementById(`tooltip-punct-${id}`).innerHTML = `<span class="text-gray-400">${id.charAt(0).toUpperCase() + id.slice(1)}:</span> <span class="font-bold ml-1 text-white">-</span>`);
         }
     }
 
@@ -1921,81 +2077,7 @@
         document.getElementById('out-avg-transit').innerText = `Transit: ${transitDiffs.length > 0 ? (transitDiffs.reduce((a, b) => a + b, 0) / transitDiffs.length).toFixed(1) + ' mins' : '-'}`;
         document.getElementById('out-overlap-flights-list').innerHTML = overlapFlightsHTML;
 
-        let stepVal = xAxisDtick || 86400000;
-        let layoutArgs = { 
-            margin: { t: 10, l: 60, r: 60, b: diffDays > 1 ? 100 : 60 }, 
-            font: { family: 'Inter, sans-serif' }, 
-            paper_bgcolor: '#ffffff', 
-            plot_bgcolor: '#ffffff', 
-            hovermode: 'x', 
-            shapes: [], 
-            annotations: [],
-            xaxis: { 
-                title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, tickvals: xAxisTickVals, ticktext: xAxisTickText, 
-                range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)], 
-                hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M', 
-                showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, 
-                spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1, anchor: 'y', side: 'bottom' 
-            }, 
-            yaxis: { 
-                title: 'No. of Bags', side: 'left', showgrid: true, 
-                domain: [0, 1 - (65 / 400) - (15 / 400)], rangemode: 'nonnegative', 
-                zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1 
-            }, 
-            yaxis2: { 
-                title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, 
-                zeroline: false, tickformat: 'd', domain: [1 - (65 / 400), 1], rangemode: 'nonnegative' 
-            }, 
-            showlegend: true, 
-            legend: { orientation: 'h', y: 1 + (30 / 400) } 
-        };
-
-        // Draw "wrap like style" bracket spans for multi-day periods underneath the x-axis
-        if (diffDays > 1) {
-            let sDateObj = new Date(sTime);
-            let monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            for (let i = 0; i < diffDays; i++) {
-                let dStart = new Date(sDateObj.getTime() + (i * 86400000));
-                let dEnd = new Date(dStart.getTime() + 86400000);
-                let dMid = new Date(dStart.getTime() + 43200000); // exactly noon
-                
-                let dateLabel = `<b>${pad(dStart.getDate())} ${monthNames[dStart.getMonth()]} ${dStart.getFullYear()}</b>`;
-
-                // Horizontal wrap line
-                layoutArgs.shapes.push({
-                    type: 'line', xref: 'x', yref: 'paper',
-                    x0: dStart.getTime(), y0: -0.18, 
-                    x1: dEnd.getTime(), y1: -0.18,
-                    line: { color: '#9ca3af', width: 1.5 }
-                });
-                
-                // Left vertical tick (00:00)
-                layoutArgs.shapes.push({
-                    type: 'line', xref: 'x', yref: 'paper',
-                    x0: dStart.getTime(), y0: -0.15, 
-                    x1: dStart.getTime(), y1: -0.18,
-                    line: { color: '#9ca3af', width: 1.5 }
-                });
-                
-                // Right vertical tick (00:00 the next day)
-                layoutArgs.shapes.push({
-                    type: 'line', xref: 'x', yref: 'paper',
-                    x0: dEnd.getTime(), y0: -0.15, 
-                    x1: dEnd.getTime(), y1: -0.18,
-                    line: { color: '#9ca3af', width: 1.5 }
-                });
-                
-                // Date text centered under the wrap bracket
-                layoutArgs.annotations.push({
-                    xref: 'x', yref: 'paper',
-                    x: dMid.getTime(), y: -0.22,
-                    xanchor: 'center', yanchor: 'top',
-                    text: dateLabel,
-                    showarrow: false,
-                    font: { size: 11, color: '#6b7280' }
-                });
-            }
-        }
+        let stepVal = xAxisDtick || 86400000, layoutArgs = { margin: { t: 10, l: 60, r: 60, b: 60 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', hovermode: 'x', shapes: [], xaxis: { title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, tickvals: xAxisTickVals, ticktext: xAxisTickText, range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)], hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M', showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1, anchor: 'y', side: 'bottom' }, yaxis: { title: 'No. of Bags', side: 'left', showgrid: true, domain: [0, 1 - (65 / 400) - (15 / 400)], rangemode: 'nonnegative', zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1 }, yaxis2: { title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, zeroline: false, tickformat: 'd', domain: [1 - (65 / 400), 1], rangemode: 'nonnegative' }, showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) } };
 
         let traces = [];
         if (isMultipleReclaims) {
