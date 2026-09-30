@@ -1553,9 +1553,10 @@ function renderPunctualityTrendChart() {
                 y: yBox, 
                 type: 'box', 
                 name: catName,
-                line: { color: catColor, width: 1.5 }, // Clean, crisp border
-                fillcolor: Utils.getRgba(catColor, 0.4), // Slightly stronger fill color for better visibility
-                boxpoints: false, // REMOVES ALL SCATTER DOTS
+                line: { color: catColor, width: 1.2 }, // Slightly thinner line for a cleaner look
+                fillcolor: Utils.getRgba(catColor, 0.4),
+                boxpoints: false, 
+                width: 0.35, // MAKES THE BOX NARROWER AND CUTER
                 hoverinfo: 'none' 
             };
 
@@ -1573,11 +1574,10 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 5, b: 0, l: 0, r: 0 }, 
+                margin: { t: 10, b: 10, l: 0, r: 0 }, // ADDS VERTICAL PADDING TO SCALE DOWN HEIGHT
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
-                // REMOVES ALL GRID LINES AND ZEROLINES
                 xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
                 yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: false, showticklabels: false, zeroline: false }, 
                 yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
