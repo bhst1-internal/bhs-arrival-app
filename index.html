@@ -1553,10 +1553,10 @@ function renderPunctualityTrendChart() {
                 y: yBox, 
                 type: 'box', 
                 name: catName,
-                line: { color: catColor, width: 1 }, // Thinned the line to match the smaller size
+                line: { color: catColor, width: 1 },
                 fillcolor: Utils.getRgba(catColor, 0.4),
                 boxpoints: false, 
-                width: 0.17, // Halved from 0.35 to make the box 50% narrower
+                width: 0.2, // Keeps the box small and "cute"
                 hoverinfo: 'none' 
             };
 
@@ -1565,8 +1565,8 @@ function renderPunctualityTrendChart() {
                 y: closes, 
                 type: 'scatter', 
                 mode: 'lines+markers', 
-                marker: { symbol: 'circle', size: 3, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, 
-                line: { color: '#9ca3af', width: 1, dash: 'dot' }, 
+                marker: { symbol: 'circle', size: 4, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, 
+                line: { color: '#9ca3af', width: 1.2, dash: 'dot' }, 
                 yaxis: 'y2', 
                 hoverinfo: 'none' 
             };
@@ -1574,14 +1574,15 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                // Increased top and bottom margins to 22px to squeeze the chart height by ~50% and center it
-                margin: { t: 22, b: 22, l: 0, r: 0 }, 
+                // Balanced 15px top/bottom margins ensure the plot area sits perfectly center
+                margin: { t: 15, b: 15, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
                 xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
                 yaxis: { type: isLog ? 'log' : 'linear', autorange: true, showgrid: false, showticklabels: false, zeroline: false }, 
-                yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
+                // By replacing range: [0, 105] with autorange: true, the trendline auto-centers vertically
+                yaxis2: { overlaying: 'y', side: 'right', autorange: true, showgrid: false, showticklabels: false, zeroline: false },
                 showlegend: false, hovermode: 'x' 
             };
 
