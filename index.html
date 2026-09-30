@@ -1580,8 +1580,8 @@ function renderPunctualityTrendChart() {
                 plot_bgcolor: 'rgba(0,0,0,0)', 
                 xaxis: { showgrid: false, showticklabels: false, zeroline: false }, 
                 
-                // Box plot y-axis: domain shifted from [0.15, 0.85] to [0.25, 0.95] to move it UP towards the top line
-                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.25, 0.95], showgrid: false, showticklabels: false, zeroline: false }, 
+                // Box plot y-axis: domain shifted from [0.25, 0.95] to [0.30, 1.00] to move it flush to the top
+                yaxis: { type: isLog ? 'log' : 'linear', autorange: true, domain: [0.30, 1.00], showgrid: false, showticklabels: false, zeroline: false }, 
                 
                 // Percentage y-axis: Remains spanning the whole background
                 yaxis2: { overlaying: 'y', side: 'right', range: [0, 105], showgrid: false, showticklabels: false, zeroline: false },
