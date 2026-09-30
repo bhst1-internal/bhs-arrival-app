@@ -361,19 +361,36 @@
                     <!-- Trend View Redesigned -->
                     <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
                         <!-- Early Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[90px] max-h-[130px] w-full">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
                             <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- On-Time Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[90px] max-h-[130px] w-full">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
                             <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- Late Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[90px] max-h-[130px] w-full">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[90px] max-h-[130px] w-full shrink-0">
                             <div class="w-20 shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
                             <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
+                        </div>
+                        
+                        <!-- Punctuality Table Below Chart -->
+                        <div id="punctuality-trend-table-container" class="w-full mt-2 border border-gray-200 rounded shadow-sm overflow-hidden shrink-0">
+                            <div class="overflow-x-auto table-scroll">
+                                <table class="w-full text-[0.65rem] text-center whitespace-nowrap bg-white border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th class="sticky top-0 bg-gray-100 p-1.5 border font-bold text-gray-700">Date</th>
+                                            <th class="sticky top-0 bg-yellow-50 p-1.5 border font-bold text-yellow-700">Early (%)</th>
+                                            <th class="sticky top-0 bg-green-50 p-1.5 border font-bold text-green-700">On-Time (%)</th>
+                                            <th class="sticky top-0 bg-red-50 p-1.5 border font-bold text-red-700">Late (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="punctuality-trend-tbody" class="text-gray-800 font-medium"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -390,9 +407,12 @@
 
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
-                        <h3 class="font-bold text-gray-700">5. Overall BR Duration Distribution</h3>
+                        <h3 class="font-bold text-gray-700">5. BR Load</h3>
+                        <select id="br-sort" class="border p-1 rounded text-xs bg-gray-50 focus:ring-blue-500 outline-none font-medium">
+                            <option value="bags-desc">Total Bags &darr;</option><option value="bags-asc">Total Bags &uarr;</option><option value="alpha">Alphabetical</option>
+                        </select>
                     </div>
-                    <div id="chart-histogram" class="flex-1 w-full min-h-0 relative"></div>
+                    <div id="chart-br-bar" class="flex-1 w-full min-h-0 relative"></div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col" style="height: 390px;">
@@ -537,7 +557,6 @@
         let activeFlightUid = null;
         let isTrendView = false;
         
-        // Massive constant array condensed for size
         const internationalFlights = ["0D178","3U3995","6E1037","8B661","8B673","8B675","8B677","8B679","8M501","8M503","A12386","AH3156","BA33","BG921","BI871","BI873","BR217","BR227","BS315","CA483","CI721","CX723","CX725","CX729","CZ3047","CZ349","CZ5031","CZ8011","CZ8097","CZ8301","EK344","EK346","ET638","EY486","EY488","FM7221","FM863","FM865","FM885","FY3611","FY3693","FY3971","G9800","GA820","H9890","HY553","IA455","ID7250","ID7262","ID7264","ID7282","IU168","JL723","JT156","JT160","JT164","JX725","JY160","KL809","MF847","MF8677","MF8723","MF897","MH1","MH103","MH105","MH107","MH109","MH117","MH119","MH122","MH126","MH132","MH134","MH138","MH144","MH146","MH148","MH153","MH157","MH159","MH165","MH171","MH178","MH181","MH183","MH185","MH191","MH193","MH195","MH197","MH199","MH205","MH209","MH21","MH250","MH3","MH319","MH367","MH377","MH387","MH389","MH39","MH469","MH484","MH486","MH496","MH521","MH523","MH53","MH57","MH580","MH602","MH604","MH606","MH608","MH614","MH616","MH620","MH624","MH628","MH64","MH67","MH705","MH709","MH710","MH712","MH714","MH716","MH720","MH721","MH726","MH73","MH747","MH749","MH751","MH753","MH755","MH759","MH773","MH783","MH785","MH787","MH789","MH79","MH791","MH795","MH797","MH807","MH840","MH846","MH850","MH856","MH865","MH870","MH872","MH8829","MH89","MHF847","MK646","MU5095","MU873","OC192","OD122","OD132","OD136","OD158","OD161","OD172","OD178","OD181","OD192","OD206","OD216","OD232","OD242","OD294","OD296","OD307","OD337","OD357","OD373","OD387","OD389","OD397","OD399","OD503","OD523","OD527","OD529","OD541","OD572","OD606","OD613","OD615","OD617","OD643","OD671","OD673","OD675","OD693","OD702","OD752","OD802","OD804","OD808","OD821","OD873","PR525","QG502","QR844","QR852","QR854","RX863","RY6607","SQ104","SQ106","SQ108","SQ114","SQ116","SQ122","SQ126","SV834","T5803","TG415","TG417","TJ174","TK174","TK60","TK62","UL314","UL318","VJ1813","VJ825","VJ905","VN679","VN681","WY821","WY823","XH148","ZH327","ZH329","ZH9329"];
 
         const palette = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#f97316', '#84cc16', '#6366f1'];
@@ -1059,6 +1078,7 @@
             document.getElementById('slicer-aircraft').addEventListener('change', (e) => { populateFlightSlicer(e.target.value); updateDashboardWithLoader(); });
             ['filter-start-date', 'filter-end-date', 'slicer-interval', 'slicer-punctuality'].forEach(id => { document.getElementById(id).addEventListener('change', updateDashboardWithLoader); });
             document.getElementById('reclaim-sort').addEventListener('change', () => { if (window.currentFilteredData) renderCharts(window.currentFilteredData); });
+            document.getElementById('br-sort').addEventListener('change', () => { if (window.currentFilteredData) renderCharts(window.currentFilteredData); });
 
             const reclaimSelectBtn = document.getElementById('custom-reclaim-select'), reclaimMenu = document.getElementById('custom-reclaim-menu'), chkAllReclaims = document.getElementById('chk-all-reclaims');
             reclaimSelectBtn.addEventListener('click', (e) => { reclaimMenu.classList.toggle('hidden'); e.stopPropagation(); });
@@ -1445,7 +1465,7 @@
                     
                     if(vals.length > 0) {
                         let min = Math.min(...vals), max = Math.max(...vals);
-                        let percent = (vals.length / st.total) * 100; // Calculate Close (Percentage)
+                        let percent = (vals.length / st.total) * 100;
                         if (max > maxDeviation) maxDeviation = max;
                         
                         lows.push(min); 
@@ -1457,7 +1477,6 @@
                     }
                 });
 
-                // Trace 1: High-Low Range (Vertical Line on primary Y-axis)
                 let hl_x = [], hl_y = [];
                 for (let i = 0; i < xDates.length; i++) {
                     if (highs[i] !== null) {
@@ -1472,7 +1491,6 @@
                     hoverinfo: 'none' 
                 };
 
-                // Trace 2: Close Percentage (Horizontal Tick Marker on secondary Y-axis)
                 let traceClose = { 
                     x: xDates, y: closes, type: 'scatter', mode: 'markers', 
                     marker: { symbol: 'line-ew', size: 16, color: catColor, line: { color: catColor, width: 3 } }, 
@@ -1515,9 +1533,9 @@
                     document.getElementById('trend-tooltip-content').innerHTML = `
                         <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">${catName} Trend Details</div>
                         <div class="mb-1"><span class="text-gray-400">Date:</span> <span class="font-bold text-white ml-1">${pt.x}</span></div>
-                        <div class="mb-1"><span class="text-gray-400">Flights:</span> <span class="font-bold text-white ml-1">${hd.count} <span class="text-gray-500 font-normal">/ ${hd.total}</span></span></div>
-                        <div class="mb-1"><span class="text-gray-400">Range (High/Low):</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max}</span> <span class="text-gray-500 ml-0.5">${timeContext}</span></div>
-                        <div><span class="text-gray-400">Close (%):</span> <span class="font-bold text-white ml-1">${hd.pct}%</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Total Flight:</span> <span class="font-bold text-white ml-1">${hd.count}</span></div>
+                        <div class="mb-1"><span class="text-gray-400">Range:</span> <span class="font-bold ${colorClass} ml-1">${hd.min} to ${hd.max} mins</span></div>
+                        <div><span class="text-gray-400">Percentage:</span> <span class="font-bold text-white ml-1">${hd.pct}%</span></div>
                     `;
                     let tooltip = document.getElementById('trend-custom-tooltip');
                     tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = data.event.pageY + 'px'; tooltip.style.opacity = '1';
@@ -1530,6 +1548,29 @@
             drawRangeChart('chart-trend-early', 'EARLY', 'Early', '#eab308');
             drawRangeChart('chart-trend-ontime', 'ON-TIME', 'On-Time', '#22c55e');
             drawRangeChart('chart-trend-late', 'LATE', 'Late', '#ef4444');
+
+            // Populate Punctuality Trend Table
+            let tableHTML = '';
+            Object.keys(dailyStats).sort().forEach(date => {
+                let st = dailyStats[date];
+                if(st.total === 0) return; // Skip days with no data matching filters
+                
+                let dt = new Date(date);
+                let dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
+                
+                let earlyPct = st.EARLY.vals.length ? ((st.EARLY.vals.length / st.total) * 100).toFixed(1) : '0.0';
+                let onTimePct = st['ON-TIME'].vals.length ? ((st['ON-TIME'].vals.length / st.total) * 100).toFixed(1) : '0.0';
+                let latePct = st.LATE.vals.length ? ((st.LATE.vals.length / st.total) * 100).toFixed(1) : '0.0';
+                
+                tableHTML += `
+                <tr>
+                    <td class="p-1.5 border border-gray-200 font-bold bg-gray-50 text-gray-700">${dateStr}</td>
+                    <td class="p-1.5 border border-gray-200 text-yellow-700 font-bold">${earlyPct}%</td>
+                    <td class="p-1.5 border border-gray-200 text-green-700 font-bold">${onTimePct}%</td>
+                    <td class="p-1.5 border border-gray-200 text-red-700 font-bold">${latePct}%</td>
+                </tr>`;
+            });
+            document.getElementById('punctuality-trend-tbody').innerHTML = tableHTML || '<tr><td colspan="4" class="p-3 text-center text-gray-400 italic border">No trend data available.</td></tr>';
         }
 
         function executeDashboardUpdate() {
@@ -2018,7 +2059,7 @@
         function renderCharts(data) {
             requestAnimationFrame(() => {
                 if (data.length === 0) { 
-                    ['chart-bar', 'chart-histogram'].forEach(id => { let el = document.getElementById(id); if(el) { if(el.removeAllListeners){ el.removeAllListeners('plotly_hover'); el.removeAllListeners('plotly_unhover'); } Plotly.purge(id); } }); 
+                    ['chart-bar', 'chart-br-bar'].forEach(id => { let el = document.getElementById(id); if(el) { if(el.removeAllListeners){ el.removeAllListeners('plotly_hover'); el.removeAllListeners('plotly_unhover'); } Plotly.purge(id); } }); 
                     renderTimeline(data); return; 
                 }
                 
@@ -2078,21 +2119,88 @@
                     chartBarDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
                     if (!chartBarDiv._customMouseAttached) { chartBarDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('bar-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } }); chartBarDiv._customMouseAttached = true; }
                 }
-                
-                if(document.getElementById('chart-histogram')) {
-                    Plotly.react('chart-histogram', [{ x: data.map(d => d.DurationNum), type: 'histogram', hoverinfo: 'none', marker: { color: palette[0], line: { color: 'white', width: 1 } }, opacity: 0.8 }], { margin: { t: 10, l: 40, r: 20, b: 40 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', xaxis: { title: 'Duration (mins)' }, yaxis: { title: 'Count of Flights' }, bargap: 0.05 }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'Overall_BR_Duration_Distribution', scale: 2 } });
-                    let chartHistDiv = document.getElementById('chart-histogram');
-                    if (!document.getElementById('hist-custom-tooltip')) { let tooltip = document.createElement('div'); tooltip.id = 'hist-custom-tooltip'; tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100'; tooltip.innerHTML = `<div id="hist-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`; document.body.appendChild(tooltip); }
-                    if (chartHistDiv.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartHistDiv.removeAllListeners(e)); }
-                    
-                    chartHistDiv.on('plotly_hover', function(data) {
-                        let pt = data.points[0]; if (!pt) return;
-                        document.getElementById('hist-tooltip-content').innerHTML = `<div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">Duration Bucket: <span class="text-blue-400">~${(pt.x !== undefined && pt.x !== null) ? pt.x : '0'} mins</span></div><div><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-white ml-1">${pt.y}</span></div>`;
-                        let tooltip = document.getElementById('hist-custom-tooltip');
-                        tooltip.style.left = data.event.pageX + 'px'; tooltip.style.top = (data.event.pageY - 15) + 'px'; tooltip.style.transform = 'translate(-50%, -100%)'; tooltip.style.opacity = '1';
+
+                if(document.getElementById('chart-br-bar')) {
+                    let brMetrics = {};
+                    data.forEach(d => {
+                        let br = d.BreakDownDisplay || 'Unknown'; 
+                        if (!brMetrics[br]) brMetrics[br] = { bags: 0, flights: 0, nb: 0, wb: 0, brDurSum: 0, recDurSum: 0, maxRecDur: 0 };
+                        brMetrics[br].bags += d.BagCount; brMetrics[br].flights += 1;
+                        let ac = (d.Aircraft || '').toUpperCase(); 
+                        if (ac.includes('NARROW') || ac === 'NB') brMetrics[br].nb += 1; 
+                        else if (ac.includes('WIDE') || ac === 'WB') brMetrics[br].wb += 1;
+                        brMetrics[br].brDurSum += d.DurationNum; brMetrics[br].recDurSum += d.ReclaimDurationNum;
+                        if (d.ReclaimDurationNum > brMetrics[br].maxRecDur) brMetrics[br].maxRecDur = d.ReclaimDurationNum;
                     });
-                    chartHistDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
-                    if (!chartHistDiv._customMouseAttached) { chartHistDiv.addEventListener('mousemove', (evt) => { let tooltip = document.getElementById('hist-custom-tooltip'); if(tooltip && tooltip.style.opacity === '1') { tooltip.style.left = evt.pageX + 'px'; tooltip.style.top = (evt.pageY - 15) + 'px'; } }); chartHistDiv._customMouseAttached = true; }
+
+                    let brKeys = Object.keys(brMetrics);
+                    let sortVal = document.getElementById('br-sort') ? document.getElementById('br-sort').value : 'bags-desc';
+                    if (sortVal === 'bags-desc') brKeys.sort((a,b) => brMetrics[b].bags - brMetrics[a].bags); 
+                    else if (sortVal === 'bags-asc') brKeys.sort((a,b) => brMetrics[a].bags - brMetrics[b].bags); 
+                    else if (sortVal === 'alpha') brKeys.sort((a,b) => a.localeCompare(b));
+                    
+                    let customdata = brKeys.map(k => { 
+                        let m = brMetrics[k]; 
+                        return [ m.flights, m.nb, m.wb, m.bags.toLocaleString(), m.flights > 0 ? (m.brDurSum / m.flights).toFixed(1) : '0.0', m.flights > 0 ? (m.recDurSum / m.flights).toFixed(1) : '0.0', m.maxRecDur.toFixed(1) ]; 
+                    });
+
+                    let brColors = brKeys.map((k, i) => palette[i % palette.length]);
+
+                    Plotly.react('chart-br-bar', [{ 
+                        x: brKeys, 
+                        y: brKeys.map(k => brMetrics[k].bags), 
+                        customdata: customdata, hoverinfo: 'none', type: 'bar', 
+                        text: brKeys.map(k => brMetrics[k].bags.toLocaleString()), 
+                        textposition: 'inside', insidetextanchor: 'middle', textangle: 0, constraintext: 'none', 
+                        textfont: { color: '#1f2937', weight: 'bold', size: 11 }, 
+                        marker: { color: brColors.map(c => getRgba(c, 0.35)), line: { color: brColors, width: 1.5 } } 
+                    }], { 
+                        margin: { t: 10, l: 60, r: 20, b: 40 }, 
+                        font: { family: 'Inter, sans-serif' }, 
+                        paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', 
+                        xaxis: { title: 'BR Name', tickangle: 0 }, 
+                        yaxis: { title: 'Total Bags Handled', automargin: true }, 
+                        bargap: 0.15 
+                    }, { responsive: true, toImageButtonOptions: { format: 'jpeg', filename: 'BR_Load', scale: 2 } });
+
+                    let chartBrDiv = document.getElementById('chart-br-bar');
+                    if (!document.getElementById('br-custom-tooltip')) { 
+                        let tooltip = document.createElement('div'); tooltip.id = 'br-custom-tooltip'; 
+                        tooltip.className = 'absolute px-4 py-2.5 bg-gray-800 text-white text-xs rounded-lg opacity-0 pointer-events-none z-[100] shadow-xl text-left border border-gray-700 transition-opacity duration-100'; 
+                        tooltip.innerHTML = `<div id="br-tooltip-content"></div><div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-[1px] border-[6px] border-transparent border-t-gray-800"></div>`; 
+                        document.body.appendChild(tooltip); 
+                    }
+                    
+                    if (chartBrDiv.removeAllListeners) { ['plotly_hover', 'plotly_unhover'].forEach(e => chartBrDiv.removeAllListeners(e)); }
+
+                    chartBrDiv.on('plotly_hover', function(data) {
+                        let pt = data.points[0]; if (!pt || !pt.customdata) return;
+                        document.getElementById('br-tooltip-content').innerHTML = `
+                            <div class="font-bold text-gray-300 border-b border-gray-600 pb-1.5 mb-1.5 uppercase tracking-wide">BR Details: <span class="text-blue-400">${pt.x}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Flights:</span> <span class="font-bold text-blue-400 ml-1">${pt.customdata[0]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Fleet (NB | WB):</span> <span class="font-bold text-green-400 ml-1">${pt.customdata[1]}</span> <span class="text-gray-500 mx-1">|</span> <span class="font-bold text-yellow-400">${pt.customdata[2]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Total Bags:</span> <span class="font-bold text-white ml-1">${pt.customdata[3]}</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg BR Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[4]} min</span></div>
+                            <div class="mb-1"><span class="text-gray-400">Avg Rec Dur:</span> <span class="font-bold text-white ml-1">${pt.customdata[5]} min</span></div>
+                            <div><span class="text-gray-400">Max Rec Dur:</span> <span class="font-bold text-red-400 ml-1">${pt.customdata[6]} min</span></div>
+                        `;
+                        let tooltip = document.getElementById('br-custom-tooltip');
+                        tooltip.style.left = data.event.pageX + 'px'; 
+                        tooltip.style.top = (data.event.pageY - 15) + 'px'; 
+                        tooltip.style.transform = 'translate(-50%, -100%)'; 
+                        tooltip.style.opacity = '1';
+                    });
+                    chartBrDiv.on('plotly_unhover', function() { let tooltip = document.getElementById('br-custom-tooltip'); if(tooltip) tooltip.style.opacity = '0'; });
+                    if (!chartBrDiv._customMouseAttached) { 
+                        chartBrDiv.addEventListener('mousemove', (evt) => { 
+                            let tooltip = document.getElementById('br-custom-tooltip'); 
+                            if(tooltip && tooltip.style.opacity === '1') { 
+                                tooltip.style.left = evt.pageX + 'px'; 
+                                tooltip.style.top = (evt.pageY - 15) + 'px'; 
+                            } 
+                        }); 
+                        chartBrDiv._customMouseAttached = true; 
+                    }
                 }
             });
         }
