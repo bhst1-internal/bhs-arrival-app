@@ -359,19 +359,20 @@
                     </div>
 
                     <!-- Trend View Redesigned -->
-                    <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-y-auto overflow-x-hidden pr-1 sim-scroll">
+                    <!-- Trend View Redesigned -->
+                    <div id="punctuality-trend-view" class="flex-1 w-full min-h-0 hidden relative flex-col gap-1 overflow-hidden pr-1">
                         <!-- Early Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 min-h-[70px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-yellow-400/10 w-full min-h-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-yellow-400/20 font-bold text-yellow-700 text-xs text-center p-1 leading-tight">Early</div>
                             <div id="chart-trend-early" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- On-Time Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 min-h-[70px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-green-400/10 w-full min-h-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-green-400/20 font-bold text-green-700 text-xs text-center p-1 leading-tight">On-Time</div>
                             <div id="chart-trend-ontime" class="flex-1 relative w-full h-full"></div>
                         </div>
                         <!-- Late Row -->
-                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 min-h-[70px] w-full shrink-0">
+                        <div class="flex-1 flex border border-gray-200 rounded shadow-sm bg-red-400/10 w-full min-h-0">
                             <div class="w-[90px] min-w-[90px] shrink-0 flex items-center justify-center border-r border-gray-200 bg-red-400/20 font-bold text-red-700 text-xs text-center p-1 leading-tight">Late</div>
                             <div id="chart-trend-late" class="flex-1 relative w-full h-full"></div>
                         </div>
@@ -1552,11 +1553,11 @@ function renderPunctualityTrendChart() {
                 y: yBox, 
                 type: 'box', 
                 name: catName,
-                marker: { color: catColor, size: 2, opacity: 0.7 }, // Reduced size to fit smaller height
-                line: { color: catColor, width: 1.5 },
+                marker: { color: catColor, size: 1.5, opacity: 0.8 }, // Optimally smaller marker size
+                line: { color: catColor, width: 1 }, // Thinner box borders
                 fillcolor: Utils.getRgba(catColor, 0.2),
                 boxpoints: 'outliers',
-                jitter: 0.2, // Reduced spread to look cleaner vertically
+                jitter: 0.15, // Narrower scatter spread to fit vertical constraints
                 hoverinfo: 'none' 
             };
 
@@ -1565,8 +1566,8 @@ function renderPunctualityTrendChart() {
                 y: closes, 
                 type: 'scatter', 
                 mode: 'lines+markers', 
-                marker: { symbol: 'circle', size: 4, color: '#6b7280', line: { color: '#ffffff', width: 1 } }, // Scaled down the percentage line markers
-                line: { color: '#9ca3af', width: 1.5, dash: 'dot' },
+                marker: { symbol: 'circle', size: 3, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, // Scaled down percentage markers
+                line: { color: '#9ca3af', width: 1, dash: 'dot' }, // Thinner percentage line
                 yaxis: 'y2', 
                 hoverinfo: 'none' 
             };
@@ -1574,7 +1575,7 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 5, b: 0, l: 0, r: 0 }, // Tighter top margin to maximize chart space
+                margin: { t: 5, b: 0, l: 0, r: 0 }, // Tight margins to maximize plot space
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
