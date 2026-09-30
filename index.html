@@ -1553,10 +1553,10 @@ function renderPunctualityTrendChart() {
                 y: yBox, 
                 type: 'box', 
                 name: catName,
-                line: { color: catColor, width: 1.2 }, // Slightly thinner line for a cleaner look
+                line: { color: catColor, width: 1 }, // Thinned the line to match the smaller size
                 fillcolor: Utils.getRgba(catColor, 0.4),
                 boxpoints: false, 
-                width: 0.35, // MAKES THE BOX NARROWER AND CUTER
+                width: 0.17, // Halved from 0.35 to make the box 50% narrower
                 hoverinfo: 'none' 
             };
 
@@ -1565,8 +1565,8 @@ function renderPunctualityTrendChart() {
                 y: closes, 
                 type: 'scatter', 
                 mode: 'lines+markers', 
-                marker: { symbol: 'circle', size: 4, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, 
-                line: { color: '#9ca3af', width: 1.2, dash: 'dot' }, 
+                marker: { symbol: 'circle', size: 3, color: '#6b7280', line: { color: '#ffffff', width: 0.5 } }, 
+                line: { color: '#9ca3af', width: 1, dash: 'dot' }, 
                 yaxis: 'y2', 
                 hoverinfo: 'none' 
             };
@@ -1574,7 +1574,8 @@ function renderPunctualityTrendChart() {
             let isLog = maxDeviation > 60 && catKey !== 'ON-TIME';
             
             let layout = { 
-                margin: { t: 10, b: 10, l: 0, r: 0 }, // ADDS VERTICAL PADDING TO SCALE DOWN HEIGHT
+                // Increased top and bottom margins to 22px to squeeze the chart height by ~50% and center it
+                margin: { t: 22, b: 22, l: 0, r: 0 }, 
                 font: { family: 'Inter, sans-serif', size: 9 }, 
                 paper_bgcolor: 'rgba(0,0,0,0)', 
                 plot_bgcolor: 'rgba(0,0,0,0)', 
