@@ -359,8 +359,13 @@
 
                 <div class="bg-white p-4 rounded-lg shadow flex flex-col relative h-[390px]" id="punctuality-section-container">
                     <div class="flex justify-between items-center border-b pb-2 mb-2 shrink-0">
-                        <h3 class="font-bold text-gray-700">3. Flight Punctuality</h3>
-                        <button id="btn-punctuality-trend" title="View Trend" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">Trend</button>
+                        <h3 class="font-bold text-gray-700">
+                            3. Flight Punctuality 
+                            <span class="text-[0.65rem] font-normal text-gray-500 ml-1 hidden lg:inline-block">
+                                (ATA vs STA: Early &lt;-10 mins &nbsp;|&nbsp; On-Time &plusmn;10 mins &nbsp;|&nbsp; Late &gt;10 mins)
+                            </span>
+                        </h3>
+                        <button id="btn-punctuality-trend" title="View Trend" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all shrink-0">Trend</button>
                     </div>
                     
                     <div id="punctuality-default-view" class="flex-1 flex flex-col min-h-0 w-full relative">
@@ -1505,8 +1510,13 @@
                 
                 let avgStr = (avgDiff > 10 || (avgDiff > 0 && avgDiff <= 10)) ? `Late by ${Math.round(avgDiff)} min` : ((avgDiff < -10 || (avgDiff < 0 && avgDiff >= -10)) ? `Early by ${Math.abs(Math.round(avgDiff))} min` : 'On Time');
                 
-                // Add "+" exclusively for the LATE category and remove the "m" suffix
-                let formatDiff = (v) => (c.key === 'LATE' ? `+${Math.round(v)}` : `${Math.round(v)}`);
+                // Explicitly add "+" for LATE, and "+" for ON-TIME positive values.
+                // Negative values automatically get a "-" from Math.round.
+                let formatDiff = (v) => {
+                    let r = Math.round(v);
+                    if (c.key === 'LATE' || (c.key === 'ON-TIME' && r > 0)) return `+${r}`;
+                    return `${r}`;
+                };
                 
                 let minMaxHtml = '';
                 if (s.count > 1) {
