@@ -1504,9 +1504,18 @@
                 let maxDiff = Math.max(...s.diffs);
                 
                 let avgStr = (avgDiff > 10 || (avgDiff > 0 && avgDiff <= 10)) ? `Late by ${Math.round(avgDiff)} min` : ((avgDiff < -10 || (avgDiff < 0 && avgDiff >= -10)) ? `Early by ${Math.abs(Math.round(avgDiff))} min` : 'On Time');
-                
-                // Keep it strictly numerical to save horizontal space
                 let formatDiff = (v) => `${Math.round(v)}m`;
+                
+                // Only generate Min/Max HTML if there are multiple occurrences. Stack them using separate divs.
+                let minMaxHtml = '';
+                if (s.count > 1) {
+                    minMaxHtml = `
+                        <div class="text-[0.6rem] text-gray-500 mt-1 font-medium whitespace-nowrap leading-tight">
+                            <div title="Minimum time difference">Min: ${formatDiff(minDiff)}</div>
+                            <div title="Maximum time difference">Max: ${formatDiff(maxDiff)}</div>
+                        </div>
+                    `;
+                }
                 
                 let acStr = [...new Set(Array.from(s.acs).map(ac => { let u = ac.toUpperCase(); return (u.includes('NARROW') || u === 'NB') ? 'NB' : ((u.includes('WIDE') || u === 'WB') ? 'WB' : ac); }))].join(', ');
                 let minB = Math.min(...s.bags), maxB = Math.max(...s.bags);
@@ -1517,11 +1526,7 @@
                     <td class="p-2 border border-gray-200 text-center text-gray-700">${acStr}</td>
                     <td class="p-2 border border-gray-200 text-center align-middle">
                         <div class="text-gray-700">${avgStr}</div>
-                        <div class="text-[0.6rem] text-gray-500 mt-1 font-medium whitespace-nowrap">
-                            <span title="Minimum time difference">Min: ${formatDiff(minDiff)}</span> 
-                            <span class="mx-0.5 text-gray-300">|</span> 
-                            <span title="Maximum time difference">Max: ${formatDiff(maxDiff)}</span>
-                        </div>
+                        ${minMaxHtml}
                     </td>
                     <td class="p-2 border border-gray-200 text-center text-gray-700 font-bold">${s.count}</td>
                     <td class="p-2 border border-gray-200 text-center text-gray-700 max-w-[100px] truncate" title="${Array.from(s.reclaims).join(', ')}">${Array.from(s.reclaims).join(', ')}</td>
