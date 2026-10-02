@@ -1504,7 +1504,9 @@
                 let maxDiff = Math.max(...s.diffs);
                 
                 let avgStr = (avgDiff > 10 || (avgDiff > 0 && avgDiff <= 10)) ? `Late by ${Math.round(avgDiff)} min` : ((avgDiff < -10 || (avgDiff < 0 && avgDiff >= -10)) ? `Early by ${Math.abs(Math.round(avgDiff))} min` : 'On Time');
-                let formatDiff = (v) => v > 0 ? `Late ${Math.round(v)}m` : (v < 0 ? `Early ${Math.abs(Math.round(v))}m` : '0m');
+                
+                // Keep it strictly numerical to save horizontal space
+                let formatDiff = (v) => `${Math.round(v)}m`;
                 
                 let acStr = [...new Set(Array.from(s.acs).map(ac => { let u = ac.toUpperCase(); return (u.includes('NARROW') || u === 'NB') ? 'NB' : ((u.includes('WIDE') || u === 'WB') ? 'WB' : ac); }))].join(', ');
                 let minB = Math.min(...s.bags), maxB = Math.max(...s.bags);
