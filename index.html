@@ -1504,9 +1504,10 @@
                 let maxDiff = Math.max(...s.diffs);
                 
                 let avgStr = (avgDiff > 10 || (avgDiff > 0 && avgDiff <= 10)) ? `Late by ${Math.round(avgDiff)} min` : ((avgDiff < -10 || (avgDiff < 0 && avgDiff >= -10)) ? `Early by ${Math.abs(Math.round(avgDiff))} min` : 'On Time');
-                let formatDiff = (v) => `${Math.round(v)}m`;
                 
-                // Only generate Min/Max HTML if there are multiple occurrences. Stack them using separate divs.
+                // Add "+" exclusively for the LATE category and remove the "m" suffix
+                let formatDiff = (v) => (c.key === 'LATE' ? `+${Math.round(v)}` : `${Math.round(v)}`);
+                
                 let minMaxHtml = '';
                 if (s.count > 1) {
                     minMaxHtml = `
