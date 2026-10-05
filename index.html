@@ -297,7 +297,12 @@
             <!-- TIMELINE SECTION -->
             <div id="timelineSection" class="bg-white p-4 rounded-lg shadow relative border-t-4 border-indigo-500 transition-all">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700">1. Operational Timeline</h3>
+                    <h3 class="font-bold text-gray-700">
+						1. Operational Timeline
+						<span class="text-[0.65rem] font-normal text-gray-500 ml-1 hidden lg:inline-block">
+							(ATA vs STA: Early &lt;10 mins &nbsp;|&nbsp; On-Time &plusmn;10 mins &nbsp;|&nbsp; Late &gt;10 mins)
+						</span>
+					</h3>
                     <div class="flex items-center space-x-3">
                         <button id="saveJpegBtn" onclick="saveTimelineAsJPEG()" title="Save Section as JPEG" class="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white">JPEG</button>
                         <button id="ataModeBtn" onclick="toggleATAMode()" title="Toggle ATA Punctuality View" class="hidden items-center gap-1 px-2 py-1 rounded border border-gray-300 text-[0.65rem] font-bold text-gray-600 cursor-pointer bg-white transition-all">ATA</button>
@@ -2220,42 +2225,66 @@ function renderPunctualityTrendChart() {
         // Set bottom margin (b: 85) permanently so chart height never reduces
         let stepVal = xAxisDtick || 86400000, layoutArgs = { margin: { t: 10, l: 60, r: 60, b: 85 }, font: { family: 'Inter, sans-serif' }, paper_bgcolor: '#ffffff', plot_bgcolor: '#ffffff', hovermode: 'x', shapes: [], xaxis: { title: '', tickformat: xAxisTickFormat, dtick: xAxisDtick, tickvals: xAxisTickVals, ticktext: xAxisTickText, range: [sTime - (stepVal/2), (isDaily ? eTimeStart : eTime) + (stepVal/2)], hoverformat: isDaily ? '%d %b %Y' : '%d %b %Y, %H:%M', showgrid: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', showline: true, spikedash: 'solid', spikecolor: '#9ca3af', spikethickness: 1, anchor: 'y', side: 'bottom' }, yaxis: { title: 'No. of Bags', side: 'left', showgrid: true, domain: [0, 1 - (65 / 400) - (15 / 400)], rangemode: 'nonnegative', zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1 }, yaxis2: { title: 'No. of Aircraft', anchor: 'x', side: 'right', showgrid: false, zeroline: false, tickformat: 'd', domain: [1 - (65 / 400), 1], rangemode: 'nonnegative' }, showlegend: true, legend: { orientation: 'h', y: 1 + (30 / 400) } };
 
-        // NEW ADDITION: Show individual midpoint dates and vertical separator lines
-        // Only display if diffDays > 1 AND the interval is NOT 'daily'
-        if (diffDays > 1 && interval !== 'daily') {
-            layoutArgs.annotations = [];
-            let currentDayStart = new Date(sTime);
-            let endDayTime = eTime;
+        // NEW ADDITION: Show individual midpoint dates, total bags, and vertical separator lines
+        // 1. Calculate daily total bags for the timeline annotations
+        let dailyTotalBags = {};
+        unifiedKeys.forEach(k => {
+            let dTime = new Date(Number(k));
+            dTime.setHours(0,0,0,0);
+            let dayKey = dTime.getTime();
+            if (!dailyTotalBags[dayKey]) dailyTotalBags[dayKey] = 0;
+            dailyTotalBags[dayKey] += (agg[k] ? agg[k].bags : 0) + (simAgg[k] ? simAgg[k].bags : 0);
+        });
+
+        // 2. Configure annotations for Date and Bag display below the x-axis
+        layoutArgs.annotations = [];
+        let currentDayStart = new Date(sTime);
+        let endDayTime = eTime;
+        
+        while (currentDayStart.getTime() < endDayTime || (diffDays === 1 && currentDayStart.getTime() <= endDayTime)) {
+            // Calculate the exact midpoint of the day (12:00 PM) for the text
+            let midPoint = new Date(currentDayStart);
+            midPoint.setHours(12, 0, 0, 0);
             
-            while (currentDayStart.getTime() < endDayTime) {
-                // 1. Calculate the exact midpoint of the day (12:00 PM) for the text
-                let midPoint = new Date(currentDayStart);
-                midPoint.setHours(12, 0, 0, 0);
-                
-                layoutArgs.annotations.push({
-                    xref: 'x', yref: 'paper', // x maps to timeline, y maps to bottom of chart
-                    x: midPoint.getTime(), y: 0,
-                    xanchor: 'center', yanchor: 'top',
-                    yshift: -38, // Exactly 10mm below the x-axis
-                    text: `${pad(currentDayStart.getDate())}/${pad(currentDayStart.getMonth()+1)}/${currentDayStart.getFullYear()}`,
-                    showarrow: false,
-                    font: { size: 11, color: '#4b5563', weight: 'bold' }
-                });
-                
-                // Advance to the next day's midnight (00:00)
-                currentDayStart.setDate(currentDayStart.getDate() + 1);
-                
-                // 2. Draw vertical line from x-axis to the max height
-                if (currentDayStart.getTime() < endDayTime) {
-                    layoutArgs.shapes.push({
-                        type: 'line',
-                        xref: 'x', yref: 'paper',
-                        x0: currentDayStart.getTime(), x1: currentDayStart.getTime(),
-                        y0: 0, y1: 1, // 0 to 1 in 'paper' scales from the bottom to the absolute top of plot area
-                        line: { color: '#9ca3af', width: 1.5, dash: 'dash' }
-                    });
-                }
+            let dayKey = currentDayStart.getTime();
+            let bagsForDay = dailyTotalBags[dayKey] || 0;
+            
+            // Format the date text
+            let textStr = `${pad(currentDayStart.getDate())}/${pad(currentDayStart.getMonth()+1)}/${currentDayStart.getFullYear()}`;
+            
+            // If multiple dates are selected, append the total bags for that day
+            if (diffDays > 1) {
+                textStr += `<br><span style="font-size:10.5px; color:#6b7280; font-weight:normal;">Total Bags: ${bagsForDay.toLocaleString()}</span>`;
             }
+            
+            // Center the text in the visible range if only one day is selected
+            let xPos = (diffDays === 1 && interval !== 'daily') ? (sTime + (endDayTime - sTime) / 2) : midPoint.getTime();
+
+            layoutArgs.annotations.push({
+                xref: 'x', yref: 'paper', 
+                x: xPos, y: 0,
+                xanchor: 'center', yanchor: 'top',
+                yshift: -38, // Positions the text neatly below the x-axis ticks
+                text: textStr,
+                showarrow: false,
+                align: 'center',
+                font: { size: 11, color: '#4b5563', weight: 'bold' }
+            });
+            
+            // Draw vertical dashed lines to separate days (only if multiple days are selected)
+            if (diffDays > 1 && currentDayStart.getTime() < endDayTime) {
+                layoutArgs.shapes.push({
+                    type: 'line',
+                    xref: 'x', yref: 'paper',
+                    x0: currentDayStart.getTime(), x1: currentDayStart.getTime(),
+                    y0: 0, y1: 1, 
+                    line: { color: '#9ca3af', width: 1.5, dash: 'dash' }
+                });
+            }
+            
+            // Advance to the next day
+            currentDayStart.setDate(currentDayStart.getDate() + 1);
+            if (diffDays <= 1) break; // Break immediately to avoid infinite loops on single-day selections
         }
 
         let traces = [];
