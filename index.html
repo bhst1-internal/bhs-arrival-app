@@ -297,10 +297,10 @@
             <!-- TIMELINE SECTION -->
             <div id="timelineSection" class="bg-white p-4 rounded-lg shadow relative border-t-4 border-indigo-500 transition-all">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700">
+                    <h3 class="font-bold text-gray-700 flex items-center">
 						1. Operational Timeline
-						<span class="text-[0.65rem] font-normal text-gray-500 ml-1 hidden lg:inline-block">
-							(ATA vs STA: Early &lt;10 mins &nbsp;|&nbsp; On-Time &plusmn;10 mins &nbsp;|&nbsp; Late &gt;10 mins)
+						<span id="timeline-date-display" class="text-[0.65rem] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded ml-2 hidden lg:inline-block border border-blue-200 shadow-sm">
+							<!-- Date will be injected dynamically here -->
 						</span>
 					</h3>
                     <div class="flex items-center space-x-3">
@@ -2033,7 +2033,19 @@ function renderPunctualityTrendChart() {
 
         const pad = (n) => String(n).padStart(2, '0'), isDaily = (interval === 'daily'), timePerBag = parseFloat(document.getElementById('sim-time-bag').value) || 6;
         const startDateStr = DOM['filter-start-date'].value, endDateStr = DOM['filter-end-date'].value;
-        
+        // Update the Operational Timeline header date display
+        const dateDisplayEl = document.getElementById('timeline-date-display');
+        if (dateDisplayEl && startDateStr && endDateStr) {
+            const sDate = Utils.getLocalStartOfDay(startDateStr);
+            const eDate = Utils.getLocalEndOfDay(endDateStr);
+            const formatD = (d) => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+
+            // Show single date if start and end are the same, otherwise show the range
+            dateDisplayEl.innerHTML = startDateStr === endDateStr 
+                ? formatD(sDate) 
+                : `${formatD(sDate)} - ${formatD(eDate)}`;
+        }
+		
         let diffDays = 1, sTime = 0, eTime = 0, eTimeStart = 0;
         if (startDateStr && endDateStr) {
             let sDate = Utils.getLocalStartOfDay(startDateStr), eDate = Utils.getLocalEndOfDay(endDateStr);
